@@ -106,15 +106,53 @@ function onboardingStep2(username: string): void {
         <div class="onboarding__form">
           <label class="onboarding__field">
             <span>生年月日</span>
-            <input type="date" id="onboardBirthDate" max="2015-12-31" min="1920-01-01" autofocus />
+            <div class="date-dial">
+              <div class="date-dial__group">
+                <button class="date-dial__btn" data-dial="year-up" aria-label="年を増やす">▲</button>
+                <input type="number" id="dialYear" class="date-dial__input" value="2000" min="1920" max="2015" readonly />
+                <button class="date-dial__btn" data-dial="year-down" aria-label="年を減らす">▼</button>
+                <span class="date-dial__label">年</span>
+              </div>
+              <div class="date-dial__group">
+                <button class="date-dial__btn" data-dial="month-up" aria-label="月を増やす">▲</button>
+                <input type="number" id="dialMonth" class="date-dial__input" value="1" min="1" max="12" readonly />
+                <button class="date-dial__btn" data-dial="month-down" aria-label="月を減らす">▼</button>
+                <span class="date-dial__label">月</span>
+              </div>
+              <div class="date-dial__group">
+                <button class="date-dial__btn" data-dial="day-up" aria-label="日を増やす">▲</button>
+                <input type="number" id="dialDay" class="date-dial__input" value="1" min="1" max="31" readonly />
+                <button class="date-dial__btn" data-dial="day-down" aria-label="日を減らす">▼</button>
+                <span class="date-dial__label">日</span>
+              </div>
+            </div>
           </label>
           <button class="btn-primary onboarding__next" id="onboardNext2">次へ</button>
         </div>
       </div>
     </div>`;
 
+  // ダイヤル操作
+  const dialBtns = document.querySelectorAll('[data-dial]');
+  dialBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = (btn as HTMLElement).dataset.dial;
+      const [unit, dir] = action!.split('-');
+      const input = document.getElementById(unit === 'year' ? 'dialYear' : unit === 'month' ? 'dialMonth' : 'dialDay') as HTMLInputElement;
+      let val = parseInt(input.value);
+      const min = parseInt(input.min);
+      const max = parseInt(input.max);
+      if (dir === 'up') val = val >= max ? min : val + 1;
+      else val = val <= min ? max : val - 1;
+      input.value = String(val);
+    });
+  });
+
   document.getElementById('onboardNext2')?.addEventListener('click', () => {
-    const birthDate = (document.getElementById('onboardBirthDate') as HTMLInputElement).value;
+    const year = (document.getElementById('dialYear') as HTMLInputElement).value;
+    const month = (document.getElementById('dialMonth') as HTMLInputElement).value.padStart(2, '0');
+    const day = (document.getElementById('dialDay') as HTMLInputElement).value.padStart(2, '0');
+    const birthDate = `${year}-${month}-${day}`;
     if (!birthDate) { alert('生年月日を入力してください'); return; }
     const today = new Date();
     const birth = new Date(birthDate);
