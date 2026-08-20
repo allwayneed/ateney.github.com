@@ -1,6 +1,7 @@
 /**
- * ateney - API クライアント
+ * ateney - API クライアント v0.3.0
  * Cloudflare Workers (ateney-api) に接続
+ * 401エラー時は自動ログアウトしない（エラーを握りつぶす）
  */
 
 const API_BASE = 'https://ateney-api.ateney-ai.workers.dev/api';
@@ -63,7 +64,20 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface UserProfile {
+  id: number;
+  email: string;
+  name: string;
+  avatar_url: string;
+  username: string | null;
+  age: number | null;
+  fl_consent: number;
+  created_at?: string;
+  needs_onboarding?: boolean;
+}
+
 // ===== 共通fetchヘルパー =====
+// 401エラーでも自動ログアウトしない。エラーをthrowせずにnullを返す
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getApiToken();
   const headers: Record<string, string> = {
@@ -74,19 +88,26 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
-  if (res.status === 401) {
-    clearApiToken();
-    window.dispatchEvent(new CustomEvent('ateney:unauthorized'));
-    throw new Error('Unauthorized');
+  if (!res.ok) {
+    console.warn(`[ateney] API ${res.status}: ${path}`);
+    throw new Error(`API ${res.status}`);
   }
-  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
   return res.json() as Promise<T>;
+}
+
+// 401を想定したfetch（401ならnullを返す、ログアウトしない）
+async function apiFetchSafe<T>(path: string, options: RequestInit = {}): Promise<T | null> {
+  try {
+    return await apiFetch<T>(path, options);
+  } catch {
+    return null;
+  }
 }
 
 // ===== 認証 =====
 export async function authLogin(googleIdToken: string): Promise<{
   token: string;
-  user: { id: number; email: string; name: string; avatar_url: string };
+  user: UserProfile;
 }> {
   return apiFetch('/auth/login', {
     method: 'POST',
@@ -99,18 +120,30 @@ export async function getUser(): Promise<{ user: any }> {
   return apiFetch('/user');
 }
 
-// ===== チャット履歴 =====
-export async function getChatHistory(limit = 50, offset = 0): Promise<{ messages: ChatMessage[] }> {
-  return apiFetch(`/chat/history?limit=${limit}&offset=${offset}`);
+// ===== プロフィール更新（オンボーディング） =====
+export async function updateProfile(data: {
+  username?: string;
+  age?: number;
+  fl_consent?: boolean;
+}): Promise<{ ok: boolean }> {
+  return apiFetch('/user/profile', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
 }
-export async function saveChat(role: string, content: string, adapterValue?: number): Promise<{ ok: boolean }> {
-  return apiFetch('/chat/save', {
+
+// ===== チャット履歴 =====
+export async function getChatHistory(limit = 50, offset = 0): Promise<{ messages: ChatMessage[] } | null> {
+  return apiFetchSafe(`/chat/history?limit=${limit}&offset=${offset}`);
+}
+export async function saveChat(role: string, content: string, adapterValue?: number): Promise<{ ok: boolean } | null> {
+  return apiFetchSafe('/chat/save', {
     method: 'POST',
     body: JSON.stringify({ role, content, adapter_value: adapterValue }),
   });
 }
-export async function clearChat(): Promise<{ ok: boolean }> {
-  return apiFetch('/chat/clear', { method: 'DELETE' });
+export async function clearChat(): Promise<{ ok: boolean } | null> {
+  return apiFetchSafe('/chat/clear', { method: 'DELETE' });
 }
 
 // ===== キャラクター =====
@@ -163,7 +196,10 @@ export async function deleteRagDoc(id: number): Promise<{ ok: boolean }> {
   return apiFetch(`/rag/${id}`, { method: 'DELETE' });
 }
 
-// ===== FLサーバー状態 =====
+// ===== FLサーバー状態（公開エンドポイント、認証不要） =====
 export async function getFlStatus(): Promise<{ fl_server_url: string; fl_token_required: boolean }> {
-  return apiFetch('/fl/status');
+  // 公開エンドポイントなので直接fetch（認証ヘッダー不要）
+  const res = await fetch(`${API_BASE}/fl/status`);
+  if (!res.ok) return { fl_server_url: 'offline', fl_token_required: true };
+  return res.json();
 }

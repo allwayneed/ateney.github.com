@@ -1,6 +1,8 @@
 /**
- * ateney - メインエントリーポイント v0.2.0
- * Cloudflare Workers API接続済み
+ * ateney - メインエントリーポイント v0.3.0
+ * - 401エラー時も自動ログアウトしない
+ * - 初回ログイン時のオンボーディング（ユーザー名→年齢→FL協力）
+ * - aria-hiddenのフォーカス問題修正
  */
 
 import {
@@ -10,7 +12,7 @@ import {
   getScenes, createScene, updateScene, deleteScene,
   getRagDocs, createRagDoc, deleteRagDoc, bulkImportRag,
   getChatHistory, saveChat, clearChat,
-  getUser, getFlStatus,
+  getUser, getFlStatus, updateProfile,
   type Character, type Scene, type RagDocument,
 } from './api';
 import {
@@ -33,18 +35,155 @@ function updateAuthUI(): void {
   if (currentUser) {
     loginScreen?.classList.add('hidden');
     if (accountIcon) accountIcon.style.display = 'flex';
-    if (settingsName) settingsName.textContent = currentUser.name;
+    if (settingsName) settingsName.textContent = currentUser.username || currentUser.name;
     if (settingsEmail) settingsEmail.textContent = currentUser.email ?? '';
     if (settingsAvatar && currentUser.avatar) {
       settingsAvatar.innerHTML = `<img src="${currentUser.avatar}" alt="${currentUser.name}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
     }
-    navigateTo('home');
+    // 初回ユーザーはオンボーディング、それ以外はホーム
+    if (currentUser.needs_onboarding) {
+      showOnboarding();
+    } else {
+      navigateTo('home');
+    }
   } else {
     loginScreen?.classList.remove('hidden');
     if (accountIcon) accountIcon.style.display = 'none';
   }
 }
 
+// ===== オンボーディング（初回ログイン時） =====
+function showOnboarding(): void {
+  if (!mainContent) return;
+  const step = 1;
+  mainContent.innerHTML = `
+    <div class="onboarding" id="onboarding">
+      <div class="onboarding__card">
+        <div class="onboarding__progress">
+          <div class="onboarding__dot onboarding__dot--active"></div>
+          <div class="onboarding__dot"></div>
+          <div class="onboarding__dot"></div>
+        </div>
+        <h2 class="onboarding__title">ateneyへようこそ！</h2>
+        <p class="onboarding__desc">まずはユーザー名を決めましょう</p>
+        <div class="onboarding__form">
+          <label class="onboarding__field">
+            <span>ユーザー名（1〜20文字）</span>
+            <input type="text" id="onboardUsername" maxlength="20" placeholder="ユーザー名" autofocus />
+          </label>
+          <div class="onboarding__hint">あなたのユーザーID: #${currentUser?.userId ?? '?'}</div>
+          <button class="btn-primary onboarding__next" id="onboardNext1">次へ</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('onboardNext1')?.addEventListener('click', () => {
+    const username = (document.getElementById('onboardUsername') as HTMLInputElement).value.trim();
+    if (!username) { alert('ユーザー名を入力してください'); return; }
+    if (username.length > 20) { alert('ユーザー名は20文字以内で入力してください'); return; }
+    onboardingStep2(username);
+  });
+  // Enter key
+  document.getElementById('onboardUsername')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('onboardNext1')?.click();
+  });
+}
+
+function onboardingStep2(username: string): void {
+  if (!mainContent) return;
+  mainContent.innerHTML = `
+    <div class="onboarding" id="onboarding">
+      <div class="onboarding__card">
+        <div class="onboarding__progress">
+          <div class="onboarding__dot onboarding__dot--done"></div>
+          <div class="onboarding__dot onboarding__dot--active"></div>
+          <div class="onboarding__dot"></div>
+        </div>
+        <h2 class="onboarding__title">年齢を教えてください</h2>
+        <p class="onboarding__desc">コンテンツの最適化に使用します（公開されません）</p>
+        <div class="onboarding__form">
+          <label class="onboarding__field">
+            <span>年齢</span>
+            <input type="number" id="onboardAge" min="1" max="120" placeholder="例: 25" autofocus />
+          </label>
+          <button class="btn-primary onboarding__next" id="onboardNext2">次へ</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('onboardNext2')?.addEventListener('click', () => {
+    const age = parseInt((document.getElementById('onboardAge') as HTMLInputElement).value);
+    if (!age || age < 1 || age > 120) { alert('正しい年齢を入力してください'); return; }
+    onboardingStep3(username, age);
+  });
+  document.getElementById('onboardAge')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('onboardNext2')?.click();
+  });
+}
+
+function onboardingStep3(username: string, age: number): void {
+  if (!mainContent) return;
+  mainContent.innerHTML = `
+    <div class="onboarding" id="onboarding">
+      <div class="onboarding__card">
+        <div class="onboarding__progress">
+          <div class="onboarding__dot onboarding__dot--done"></div>
+          <div class="onboarding__dot onboarding__dot--done"></div>
+          <div class="onboarding__dot onboarding__dot--active"></div>
+        </div>
+        <h2 class="onboarding__title">分散学習に協力しますか？</h2>
+        <p class="onboarding__desc">
+          ateneyでは、ブラウザを使ってAIモデルの学習を支援する「分散学習」に参加できます。
+          参加するとAIの性能向上に貢献できます。いつでも設定から変更できます。
+        </p>
+        <div class="onboarding__form">
+          <div class="onboarding__choices">
+            <label class="onboarding__choice">
+              <input type="radio" name="flConsent" value="yes" id="flYes" />
+              <span class="onboarding__choice-label">協力する</span>
+              <span class="onboarding__choice-desc">ブラウザの空きリソースで学習に参加</span>
+            </label>
+            <label class="onboarding__choice">
+              <input type="radio" name="flConsent" value="no" id="flNo" checked />
+              <span class="onboarding__choice-label">協力しない</span>
+              <span class="onboarding__choice-desc">後でいつでも変更できます</span>
+            </label>
+          </div>
+          <button class="btn-primary onboarding__next" id="onboardFinish">完了</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('onboardFinish')?.addEventListener('click', async () => {
+    const flConsent = (document.getElementById('flYes') as HTMLInputElement).checked;
+    const btn = document.getElementById('onboardFinish') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.textContent = '保存中…';
+    try {
+      await updateProfile({ username, age, fl_consent: flConsent });
+      // ローカルの認証情報を更新
+      if (currentUser) {
+        currentUser.username = username;
+        currentUser.needs_onboarding = false;
+        // localStorageの情報も更新
+        const stored = getStoredAuth();
+        if (stored) {
+          stored.username = username;
+          stored.needs_onboarding = false;
+          localStorage.setItem('ateney_auth', JSON.stringify(stored));
+        }
+      }
+      if (settingsName) settingsName.textContent = username;
+      navigateTo('home');
+    } catch (e) {
+      alert(`保存に失敗しました: ${e}`);
+      btn.disabled = false;
+      btn.textContent = '完了';
+    }
+  });
+}
+
+// ===== Google ログイン =====
 initGoogleLogin('googleLoginBtn', (user) => {
   updateAuthUI();
 }, (msg) => { showError(msg); });
@@ -52,13 +191,12 @@ initGoogleLogin('googleLoginBtn', (user) => {
 document.getElementById('lineLoginBtn')?.addEventListener('click', () => loginWithLine());
 document.getElementById('appleLoginBtn')?.addEventListener('click', () => loginWithApple());
 
+// ログアウト（手動のみ、401では呼ばれない）
 document.getElementById('logoutBtn')?.addEventListener('click', () => {
   logout(); currentUser = null; updateAuthUI(); closeSettings();
 });
 
-window.addEventListener('ateney:unauthorized', () => {
-  logout(); updateAuthUI();
-});
+// 401イベントリスナー削除 — 自動ログアウトしない
 
 // ===== ハンバーガー =====
 const hamburger = document.getElementById('hamburger') as HTMLButtonElement | null;
@@ -69,10 +207,14 @@ function toggleMenu(): void { sideMenu?.classList.contains('open') ? closeMenu()
 function openMenu(): void {
   sideMenu?.classList.add('open'); overlay?.classList.add('show');
   hamburger?.classList.add('open'); hamburger?.setAttribute('aria-expanded', 'true');
+  sideMenu?.setAttribute('aria-hidden', 'false');
 }
 function closeMenu(): void {
+  // フォーカスを外してからaria-hiddenを設定（アクセシビリティ警告対策）
+  (document.activeElement as HTMLElement)?.blur();
   sideMenu?.classList.remove('open'); overlay?.classList.remove('show');
   hamburger?.classList.remove('open'); hamburger?.setAttribute('aria-expanded', 'false');
+  sideMenu?.setAttribute('aria-hidden', 'true');
 }
 
 hamburger?.addEventListener('click', toggleMenu);
@@ -83,8 +225,16 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeMen
 const settings = document.getElementById('settings') as HTMLElement | null;
 const settingsBack = document.getElementById('settingsBack') as HTMLButtonElement | null;
 
-function openSettings(): void { settings?.classList.add('open'); closeMenu(); }
-function closeSettings(): void { settings?.classList.remove('open'); }
+function openSettings(): void {
+  settings?.classList.add('open');
+  settings?.setAttribute('aria-hidden', 'false');
+  closeMenu();
+}
+function closeSettings(): void {
+  (document.activeElement as HTMLElement)?.blur();
+  settings?.classList.remove('open');
+  settings?.setAttribute('aria-hidden', 'true');
+}
 
 accountIcon?.addEventListener('click', openSettings);
 settingsBack?.addEventListener('click', closeSettings);
@@ -116,36 +266,37 @@ function navigateTo(page: Page): void {
 
 async function renderHome(): Promise<void> {
   if (!mainContent) return;
-  try {
-    const [charRes, flRes] = await Promise.all([
-      getPublicCharacters().catch(() => ({ characters: [] })),
-      getFlStatus().catch(() => ({ fl_server_url: 'offline', fl_token_required: true })),
-    ]);
-    mainContent.innerHTML = `
-      <div class="home">
-        <h2 class="home__title">ateneyへようこそ</h2>
-        <p class="home__desc">AIキャラクターと会話できるプラットフォーム</p>
-        <div class="home__stats">
-          <div class="home__stat"><span class="home__stat-num">${charRes.characters.length}</span><span class="home__stat-label">公開キャラクター</span></div>
-          <div class="home__stat"><span class="home__stat-num">${flRes.fl_server_url === 'offline' ? '⚠' : '✓'}</span><span class="home__stat-label">FLサーバー</span></div>
-        </div>
-        <div class="home__chars">
-          ${charRes.characters.slice(0, 6).map((c: Character) => `
-            <div class="char-card" data-id="${c.id}">
-              ${c.avatar_url ? `<img src="${c.avatar_url}" alt="${c.name}" class="char-card__avatar" />` : '<div class="char-card__avatar char-card__avatar--placeholder"></div>'}
-              <p class="char-card__name">${c.name}</p>
-              ${c.description ? `<p class="char-card__desc">${c.description.slice(0, 60)}</p>` : ''}
-            </div>
-          `).join('') || '<p class="home__empty">まだキャラクターがありません</p>'}
-        </div>
-      </div>`;
-    mainContent.querySelectorAll('.char-card').forEach(el => {
-      el.addEventListener('click', () => {
-        const id = (el as HTMLElement).dataset.id;
-        if (id) navigateToCharDetail(Number(id));
-      });
+  // FL statusは公開エンドポイントから取得、他はcatch
+  const flRes = await getFlStatus().catch(() => ({ fl_server_url: 'offline', fl_token_required: true }));
+  const charRes = await getPublicCharacters().catch(() => ({ characters: [] }));
+  const userId = currentUser?.userId ?? '?';
+  const username = currentUser?.username || currentUser?.name || 'ユーザー';
+  mainContent.innerHTML = `
+    <div class="home">
+      <div class="home__welcome">
+        <h2 class="home__title">こんにちは、${username}さん</h2>
+        <div class="home__userid">ID: #${userId}</div>
+      </div>
+      <div class="home__stats">
+        <div class="home__stat"><span class="home__stat-num">${charRes.characters.length}</span><span class="home__stat-label">公開キャラクター</span></div>
+        <div class="home__stat"><span class="home__stat-num">${flRes.fl_server_url === 'offline' || flRes.fl_server_url === 'not-configured' ? '⚠' : '✓'}</span><span class="home__stat-label">FLサーバー</span></div>
+      </div>
+      <div class="home__chars">
+        ${charRes.characters.slice(0, 6).map((c: Character) => `
+          <div class="char-card" data-id="${c.id}">
+            ${c.avatar_url ? `<img src="${c.avatar_url}" alt="${c.name}" class="char-card__avatar" />` : '<div class="char-card__avatar char-card__avatar--placeholder"></div>'}
+            <p class="char-card__name">${c.name}</p>
+            ${c.description ? `<p class="char-card__desc">${c.description.slice(0, 60)}</p>` : ''}
+          </div>
+        `).join('') || '<p class="home__empty">まだキャラクターがありません</p>'}
+      </div>
+    </div>`;
+  mainContent.querySelectorAll('.char-card').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = (el as HTMLElement).dataset.id;
+      if (id) navigateToCharDetail(Number(id));
     });
-  } catch (e) { mainContent.innerHTML = `<p class="main__loading">読み込みエラー: ${e}</p>`; }
+  });
 }
 
 async function renderWorks(): Promise<void> {
@@ -162,7 +313,7 @@ async function renderWorks(): Promise<void> {
     </div>`;
   mainContent.querySelectorAll('.works__tab').forEach(btn => {
     btn.addEventListener('click', () => {
-      mainContent.querySelectorAll('.works__tab').forEach(b => b.classList.remove('works__tab--active'));
+      mainContent!.querySelectorAll('.works__tab').forEach(b => b.classList.remove('works__tab--active'));
       btn.classList.add('works__tab--active');
       const tab = (btn as HTMLElement).dataset.tab;
       if (tab === 'characters') renderCharacters();
@@ -453,8 +604,11 @@ async function renderProfile(): Promise<void> {
         <div class="profile__card">
           ${user.avatar_url ? `<img src="${user.avatar_url}" class="profile__avatar" />` : '<div class="profile__avatar profile__avatar--placeholder"></div>'}
           <div class="profile__info">
-            <p class="profile__name">${user.name}</p>
+            <p class="profile__name">${user.username || user.name}</p>
             <p class="profile__email">${user.email}</p>
+            <p class="profile__userid">ID: #${user.id}</p>
+            ${user.age ? `<p class="profile__since">年齢: ${user.age}</p>` : ''}
+            ${user.fl_consent ? '<p class="profile__fl">分散学習: 協力中</p>' : '<p class="profile__fl">分散学習: 未協力</p>'}
             <p class="profile__since">登録日: ${user.created_at?.slice(0, 10) || ''}</p>
           </div>
         </div>

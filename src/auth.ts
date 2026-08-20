@@ -1,6 +1,7 @@
 /**
- * ateney - 認証ロジック
- * Google OAuth → Cloudflare Workers API でJWT取得
+ * ateney - 認証ロジック v0.3.0
+ * Google OAuth → Workers API でJWT取得
+ * 初回ログイン時は needs_onboarding フラグを保存
  */
 
 declare const GOOGLE_CLIENT_ID: string;
@@ -14,6 +15,9 @@ export interface AuthUser {
   email?: string;
   avatar?: string;
   token: string;
+  needs_onboarding?: boolean;
+  username?: string | null;
+  userId?: number;
 }
 
 const STORAGE_KEY = 'ateney_auth';
@@ -48,6 +52,7 @@ function decodeBase64Url(b64url: string): string {
 /**
  * Google ログイン — GISボタン初期化
  * コールバックでGoogle IDトークンを取得 → Workers APIに送信 → JWT取得
+ * needs_onboarding=true の場合、呼び出し側でオンボーディングダイアログを表示
  */
 export function initGoogleLogin(
   containerId: string,
@@ -70,7 +75,6 @@ export function initGoogleLogin(
           if (parts.length < 2) { onError?.('Invalid JWT'); return; }
           const payload = JSON.parse(decodeBase64Url(parts[1]));
 
-          // Workers APIにIDトークンを送ってJWT+ユーザー情報を取得
           const { authLogin, setApiToken } = await import('./api');
           const result = await authLogin(response.credential);
           setApiToken(result.token);
@@ -78,10 +82,13 @@ export function initGoogleLogin(
           const user: AuthUser = {
             provider: 'google',
             id: payload.sub,
-            name: result.user.name || payload.name,
+            name: result.user.username || result.user.name || payload.name,
             email: result.user.email || payload.email,
             avatar: result.user.avatar_url || payload.picture,
             token: result.token,
+            needs_onboarding: result.user.needs_onboarding,
+            username: result.user.username,
+            userId: result.user.id,
           };
           setStoredAuth(user);
           onSuccess(user);
