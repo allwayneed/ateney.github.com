@@ -2,16 +2,18 @@
  * ateney - 認証ロジック
  * Google / LINE / Apple のOAuthログインに対応
  *
- * 各プロバイダーのIDを下記に設定してください：
- * - Google: Google Cloud Console で OAuth 2.0 クライアントID を作成
- * - LINE: LINE Developers でチャネルID を作成（LINE Login）
- * - Apple: Apple Developer で Services ID を作成（Sign in with Apple）
+ * ビルド時に esbuild の --define で各IDを注入する：
+ *   --define:GOOGLE_CLIENT_ID='"xxxx.apps.googleusercontent.com"'
+ *   --define:LINE_CHANNEL_ID='"1234567890"'
+ *   --define:APPLE_CLIENT_ID='"com.ateney.app"'
+ *
+ * ローカル開発時は環境変数 $GOOGLE_CLIENT_ID 等から自動注入
  */
 
-// ===== 設定（ここを書き換えてね） =====
-const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
-const LINE_CHANNEL_ID = 'YOUR_LINE_CHANNEL_ID';
-const APPLE_CLIENT_ID = 'YOUR_APPLE_CLIENT_ID';
+// ===== ビルド時注入される変数（esbuild --define で置換） =====
+declare const GOOGLE_CLIENT_ID: string;
+declare const LINE_CHANNEL_ID: string;
+declare const APPLE_CLIENT_ID: string;
 
 const REDIRECT_URI = `${window.location.origin}/auth/callback`;
 
@@ -142,8 +144,6 @@ export async function handleAuthCallback(): Promise<AuthUser | null> {
   const url = new URL(window.location.href);
   const params = url.searchParams;
 
-  // 認可コードがある場合はバックエンドで交換が必要
-  // ここではフロントエンドでの処理のみ
   const code = params.get('code');
   const state = params.get('state');
 
@@ -161,7 +161,6 @@ export function logout(): void {
   const user = getStoredAuth();
   if (!user) return;
 
-  // プロバイダーごとのログアウト処理
   switch (user.provider) {
     case 'google':
       (window as any).google?.accounts?.id?.disableAutoSelect?.();

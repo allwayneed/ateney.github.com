@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "esbuild src/main.ts --bundle --serve=8080 --outfile=dist/main.js",
-    "build": "esbuild src/main.ts --bundle --minify --outfile=dist/main.js"
+    "build": "node build.mjs",
+    "build:local": "GOOGLE_CLIENT_ID=\"$GOOGLE_CLIENT_ID\" LINE_CHANNEL_ID=\"$LINE_CHANNEL_ID\" APPLE_CLIENT_ID=\"$APPLE_CLIENT_ID\" node build.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.23.0",
