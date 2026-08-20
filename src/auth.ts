@@ -53,13 +53,18 @@ export function isLoggedIn(): boolean {
   return getStoredAuth() !== null;
 }
 
+// ===== base64url デコードヘルパー =====
+function decodeBase64Url(b64url: string): string {
+  let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b64.length % 4;
+  if (pad) {
+    b64 += '='.repeat(4 - pad);
+  }
+  return atob(b64);
+}
+
 // ===== Google ログイン =====
-/**
- * Google Identity Services (GIS) を使ったログイン
- * GISスクリプトを動的に読み込み、ボタンをレンダリングする
- */
 export function initGoogleLogin(containerId: string, onSuccess: (user: AuthUser) => void): void {
-  // GISスクリプトをロード
   const script = document.createElement('script');
   script.src = 'https://accounts.google.com/gsi/client';
   script.async = true;
@@ -68,14 +73,15 @@ export function initGoogleLogin(containerId: string, onSuccess: (user: AuthUser)
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    // Googleボタンをレンダード
     (window as any).google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: (response: { credential: string }) => {
-        // JWTをデコード
-        const payload = JSON.parse(
-          atob(response.credential.split('.')[1])
-        );
+        const parts = response.credential.split('.');
+        if (parts.length < 2) {
+          console.error('[ateney] Invalid JWT format');
+          return;
+        }
+        const payload = JSON.parse(decodeBase64Url(parts[1]));
         const user: AuthUser = {
           provider: 'google',
           id: payload.sub,
@@ -89,10 +95,10 @@ export function initGoogleLogin(containerId: string, onSuccess: (user: AuthUser)
       },
     });
 
+    // width は数値（ピクセル）のみ。% は不可なので削除
     (window as any).google.accounts.id.renderButton(container, {
       theme: 'outline',
       size: 'large',
-      width: '100%',
       text: 'continue_with',
       locale: 'ja',
     });
@@ -101,10 +107,6 @@ export function initGoogleLogin(containerId: string, onSuccess: (user: AuthUser)
 }
 
 // ===== LINE ログイン =====
-/**
- * LINE Login（リダイレクト方式）
- * LINEの認可エンドポイントへリダイレクトする
- */
 export function loginWithLine(): void {
   const params = new URLSearchParams({
     response_type: 'code',
@@ -118,10 +120,6 @@ export function loginWithLine(): void {
 }
 
 // ===== Apple ログイン =====
-/**
- * Sign in with Apple（リダイレクト方式）
- * Appleの認可エンドポイントへリダイレクトする
- */
 export function loginWithApple(): void {
   const params = new URLSearchParams({
     response_type: 'code id_token',
@@ -136,10 +134,6 @@ export function loginWithApple(): void {
 }
 
 // ===== コールバック処理 =====
-/**
- * /auth/callback でリダイレクト後に呼ばれる
- * プロバイダーからのコールバックを処理する
- */
 export async function handleAuthCallback(): Promise<AuthUser | null> {
   const url = new URL(window.location.href);
   const params = url.searchParams;
@@ -166,10 +160,8 @@ export function logout(): void {
       (window as any).google?.accounts?.id?.disableAutoSelect?.();
       break;
     case 'line':
-      // LINEはトークンをRevokeするAPIを叩く必要がある（バックエンド側）
       break;
     case 'apple':
-      // Appleは revoke エンドポイントにリクエスト
       break;
   }
 
