@@ -66,6 +66,7 @@ function showOnboarding(): void {
         </div>
         <h2 class="onboarding__title">ateneyへようこそ！</h2>
         <p class="onboarding__desc">まずはユーザー名を決めましょう</p>
+          <p class="onboarding__hint">英数字、_、- のみ使用可能（1〜20文字）</p>
         <div class="onboarding__form">
           <label class="onboarding__field">
             <span>ユーザー名（1〜20文字）</span>
@@ -81,6 +82,7 @@ function showOnboarding(): void {
     const username = (document.getElementById('onboardUsername') as HTMLInputElement).value.trim();
     if (!username) { alert('ユーザー名を入力してください'); return; }
     if (username.length > 20) { alert('ユーザー名は20文字以内で入力してください'); return; }
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) { alert('ユーザー名は英数字、_、- のみ使用できます'); return; }
     onboardingStep2(username);
   });
   // Enter key
@@ -99,12 +101,12 @@ function onboardingStep2(username: string): void {
           <div class="onboarding__dot onboarding__dot--active"></div>
           <div class="onboarding__dot"></div>
         </div>
-        <h2 class="onboarding__title">年齢を教えてください</h2>
-        <p class="onboarding__desc">コンテンツの最適化に使用します（公開されません）</p>
+        <h2 class="onboarding__title">生年月日を教えてください</h2>
+        <p class="onboarding__desc">年齢確認に使用します（公開されません）</p>
         <div class="onboarding__form">
           <label class="onboarding__field">
-            <span>年齢</span>
-            <input type="number" id="onboardAge" min="1" max="120" placeholder="例: 25" autofocus />
+            <span>生年月日</span>
+            <input type="date" id="onboardBirthDate" max="2015-12-31" min="1920-01-01" autofocus />
           </label>
           <button class="btn-primary onboarding__next" id="onboardNext2">次へ</button>
         </div>
@@ -112,16 +114,20 @@ function onboardingStep2(username: string): void {
     </div>`;
 
   document.getElementById('onboardNext2')?.addEventListener('click', () => {
-    const age = parseInt((document.getElementById('onboardAge') as HTMLInputElement).value);
-    if (!age || age < 1 || age > 120) { alert('正しい年齢を入力してください'); return; }
-    onboardingStep3(username, age);
-  });
-  document.getElementById('onboardAge')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('onboardNext2')?.click();
+    const birthDate = (document.getElementById('onboardBirthDate') as HTMLInputElement).value;
+    if (!birthDate) { alert('生年月日を入力してください'); return; }
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    if (age < 13) { alert('ateneyは13歳以上が対象です'); return; }
+    if (age > 120) { alert('正しい生年月日を入力してください'); return; }
+    onboardingStep3(username, birthDate);
   });
 }
 
-function onboardingStep3(username: string, age: number): void {
+function onboardingStep3(username: string, birthDate: string): void {
   if (!mainContent) return;
   mainContent.innerHTML = `
     <div class="onboarding" id="onboarding">
@@ -160,7 +166,7 @@ function onboardingStep3(username: string, age: number): void {
     btn.disabled = true;
     btn.textContent = '保存中…';
     try {
-      await updateProfile({ username, age, fl_consent: flConsent });
+      await updateProfile({ username, birth_date: birthDate, fl_consent: flConsent });
       // ローカルの認証情報を更新
       if (currentUser) {
         currentUser.username = username;
@@ -607,7 +613,7 @@ async function renderProfile(): Promise<void> {
             <p class="profile__name">${user.username || user.name}</p>
             <p class="profile__email">${user.email}</p>
             <p class="profile__userid">ID: #${user.id}</p>
-            ${user.age ? `<p class="profile__since">年齢: ${user.age}</p>` : ''}
+            ${user.birth_date ? `<p class="profile__since">生年月日: ${user.birth_date}</p>` : ''}
             ${user.fl_consent ? '<p class="profile__fl">分散学習: 協力中</p>' : '<p class="profile__fl">分散学習: 未協力</p>'}
             <p class="profile__since">登録日: ${user.created_at?.slice(0, 10) || ''}</p>
           </div>

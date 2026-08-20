@@ -70,7 +70,7 @@ export interface UserProfile {
   name: string;
   avatar_url: string;
   username: string | null;
-  age: number | null;
+  birth_date: string | null;
   fl_consent: number;
   created_at?: string;
   needs_onboarding?: boolean;
@@ -123,7 +123,7 @@ export async function getUser(): Promise<{ user: any }> {
 // ===== プロフィール更新（オンボーディング） =====
 export async function updateProfile(data: {
   username?: string;
-  age?: number;
+  birth_date?: string;
   fl_consent?: boolean;
 }): Promise<{ ok: boolean }> {
   return apiFetch('/user/profile', {
