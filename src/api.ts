@@ -29,6 +29,10 @@ export interface Character {
   system_prompt?: string | null;
   greeting?: string | null;
   tags?: string | null;
+  genre?: string | null;
+  dependencies?: string | null;
+  recommendations?: string | null;
+  restrictions?: string | null;
   metadata?: string | null;
   is_public: number;
   created_at?: string;
@@ -39,10 +43,16 @@ export interface Scene {
   id: number;
   name: string;
   character_id?: number;
+  description?: string | null;
   setting?: string;
   context?: string;
   mood?: string;
   metadata?: string | null;
+  genre?: string | null;
+  dependencies?: string | null;
+  recommendations?: string | null;
+  restrictions?: string | null;
+  tags?: string | null;
   is_public: number;
   created_at?: string;
 }
@@ -53,6 +63,11 @@ export interface RagDocument {
   source?: string;
   content?: string;
   chunk_index?: number;
+  genre?: string | null;
+  dependencies?: string | null;
+  recommendations?: string | null;
+  restrictions?: string | null;
+  tags?: string | null;
   created_at?: string;
 }
 
@@ -212,6 +227,35 @@ export async function bulkImportRag(docs: any[]): Promise<{ ok: boolean; importe
 }
 export async function deleteRagDoc(id: number): Promise<{ ok: boolean }> {
   return apiFetch(`/rag/${id}`, { method: 'DELETE' });
+}
+
+
+// ===== Pack =====
+export interface Pack {
+  id: number;
+  name: string;
+  description?: string | null;
+  character_id?: number | null;
+  scene_id?: number | null;
+  rag_ids?: string | null;
+  genre?: string | null;
+  tags?: string | null;
+  is_public: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function getPacks(): Promise<{ packs: Pack[] }> {
+  return apiFetch('/packs');
+}
+export async function createPack(data: Partial<Pack> & { character_id?: number; scene_id?: number; rag_ids?: number[] }): Promise<{ ok: boolean; id: number }> {
+  return apiFetch('/packs', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function updatePack(id: number, data: Partial<Pack>): Promise<{ ok: boolean }> {
+  return apiFetch(`/packs/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+export async function deletePack(id: number): Promise<{ ok: boolean }> {
+  return apiFetch(`/packs/${id}`, { method: 'DELETE' });
 }
 
 // ===== FLサーバー状態（公開エンドポイント、認証不要） =====

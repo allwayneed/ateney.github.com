@@ -10,10 +10,11 @@ import {
   createCharacter, updateCharacter, deleteCharacter,
   getScenes, createScene, deleteScene,
   getRagDocs, createRagDoc, deleteRagDoc, bulkImportRag,
+  getPacks, createPack, deletePack, updatePack,
   getChatHistory, saveChat, clearChat, sendChatMessage,
   getUser, getFlStatus as getFlApiStatus, deleteAccount, updateProfile,
   setApiToken, clearApiToken,
-  type Character, type Scene, type RagDocument,
+  type Character, type Scene, type RagDocument, type Pack,
 } from './api';
 import {
   isLoggedIn, getStoredAuth, clearStoredAuth, logout,
@@ -447,13 +448,14 @@ document.getElementById('deleteAccountBtn2')?.addEventListener('click', async ()
 });
 
 // ===== ナビゲーション =====
-type Page = 'home' | 'chat' | 'works' | 'characters' | 'scenes' | 'rag' | 'topics' | 'profile' | 'fed';
+type Page = 'home' | 'chat' | 'works' | 'characters' | 'scenes' | 'rag' | 'packs' | 'topics' | 'profile' | 'fed';
 
 document.getElementById('menuHome')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('home'); });
 document.getElementById('menuWorks')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('works'); });
 document.getElementById('menuCharacters')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('characters'); });
 document.getElementById('menuScenes')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('scenes'); });
 document.getElementById('menuRag')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('rag'); });
+document.getElementById('menuPacks')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('packs'); });
 document.getElementById('menuChat')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('chat'); });
 document.getElementById('menuTopics')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('topics'); });
 document.getElementById('menuProfile')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('profile'); });
@@ -468,6 +470,7 @@ function navigateTo(page: Page): void {
     case 'characters': renderCharacters(); break;
     case 'scenes': renderScenes(); break;
     case 'rag': renderRag(); break;
+    case 'packs': renderPacks(); break;
     case 'topics': renderTopics(); break;
     case 'profile': renderProfile(); break;
     case 'fed': renderFed(); break;
@@ -684,7 +687,6 @@ async function renderHome(): Promise<void> {
         <div class="home__userid">ID: #${userId}</div>
       </div>
       <div class="home__stats">
-        <div class="home__stat"><span class="home__stat-num">${charRes.characters.length}</span><span class="home__stat-label">公開キャラクター</span></div>
         <div class="home__stat"><span class="home__stat-num">${flRes.fl_server_url === 'offline' || flRes.fl_server_url === 'not-configured' ? '⚠' : '✓'}</span><span class="home__stat-label">FLサーバー</span></div>
       </div>
       <div class="home__chars">
@@ -745,7 +747,7 @@ async function renderCharacters(): Promise<void> {
             <div class="char-item__info">
               <p class="char-item__name">${c.name}</p>
               <p class="char-item__desc">${c.description?.slice(0, 80) || ''}</p>
-              <div class="char-item__tags">${c.tags || ''}</div>
+              <div class="char-item__tags">${c.tags || ''} ${c.genre ? '<span class=\'tag-genre\'>' + c.genre + '</span>' : ''}</div>
             </div>
             <div class="char-item__actions">
               <button class="btn-icon" data-action="edit" data-id="${c.id}">✏</button>
@@ -769,6 +771,24 @@ async function renderCharacters(): Promise<void> {
   } catch (e) { container.innerHTML = `<p class="main__loading">エラー: ${e}</p>`; }
 }
 
+function depRecRestFields(prefix: string, char?: any): string {
+  const d = char?.dependencies || '';
+  const r = char?.recommendations || '';
+  const res = char?.restrictions || '';
+  return `
+    <label class="editor__field"><span>Dependencies (ジャンルor個別)</span><textarea id="${prefix}Deps" rows="2" placeholder="例: ファンタジー, キャラID:5">${d}</textarea></label>
+    <label class="editor__field"><span>Recommendations (ジャンルor個別)</span><textarea id="${prefix}Recs" rows="2" placeholder="例: SF, キャラID:3">${r}</textarea></label>
+    <label class="editor__field"><span>Restrictions (ジャンルor個別)</span><textarea id="${prefix}Restr" rows="2" placeholder="例: ホラー禁止, キャラID:7">${res}</textarea></label>`;
+}
+
+function collectDepRecRest(prefix: string): { dependencies: string; recommendations: string; restrictions: string } {
+  return {
+    dependencies: (document.getElementById(prefix + 'Deps') as HTMLTextAreaElement)?.value || null,
+    recommendations: (document.getElementById(prefix + 'Recs') as HTMLTextAreaElement)?.value || null,
+    restrictions: (document.getElementById(prefix + 'Restr') as HTMLTextAreaElement)?.value || null,
+  };
+}
+
 function showCharEditor(char?: Character): void {
   if (!mainContent) return;
   const isEdit = !!char;
@@ -776,13 +796,14 @@ function showCharEditor(char?: Character): void {
     <div class="editor">
       <h2 class="editor__title">${isEdit ? 'キャラクター編集' : '新規キャラクター'}</h2>
       <div class="editor__form">
-        <label class="editor__field"><span>名前</span><input type="text" id="charName" value="${char?.name || ''}" /></label>
-        <label class="editor__field"><span>アバターURL</span><input type="text" id="charAvatar" value="${char?.avatar_url || ''}" /></label>
-        <label class="editor__field"><span>説明</span><textarea id="charDesc" rows="3">${char?.description || ''}</textarea></label>
-        <label class="editor__field"><span>性格</span><textarea id="charPersonality" rows="4">${char?.personality || ''}</textarea></label>
-        <label class="editor__field"><span>システムプロンプト</span><textarea id="charSystemPrompt" rows="5">${char?.system_prompt || ''}</textarea></label>
-        <label class="editor__field"><span>挨拶</span><textarea id="charGreeting" rows="3">${char?.greeting || ''}</textarea></label>
+        <label class="editor__field"><span>写真 (URL) ※必須</span><input type="text" id="charAvatar" value="${char?.avatar_url || ''}" placeholder="画像URL" /></label>
+        <label class="editor__field"><span>名前 ※必須</span><input type="text" id="charName" value="${char?.name || ''}" /></label>
+        <label class="editor__field"><span>概要・性格 ※必須</span><textarea id="charDesc" rows="4" placeholder="キャラクターの概要や性格">${char?.description || ''}</textarea></label>
+        <label class="editor__field"><span>システムプロンプト (任意)</span><textarea id="charSystemPrompt" rows="5">${char?.system_prompt || ''}</textarea></label>
+        <label class="editor__field"><span>挨拶 (任意)</span><textarea id="charGreeting" rows="3">${char?.greeting || ''}</textarea></label>
         <label class="editor__field"><span>タグ (カンマ区切り)</span><input type="text" id="charTags" value="${char?.tags || ''}" /></label>
+        <label class="editor__field"><span>ジャンル</span><input type="text" id="charGenre" value="${char?.genre || ''}" placeholder="例: ファンタジー" /></label>
+        ${depRecRestFields('char', char)}
         <label class="editor__field editor__field--row">
           <input type="checkbox" id="charPublic" ${char?.is_public ? 'checked' : ''} />
           <span>公開する</span>
@@ -795,14 +816,18 @@ function showCharEditor(char?: Character): void {
     </div>`;
   document.getElementById('charCancel')?.addEventListener('click', () => renderCharacters());
   document.getElementById('charSave')?.addEventListener('click', async () => {
+    const drr = collectDepRecRest('char');
     const data: Partial<Character> = {
       name: (document.getElementById('charName') as HTMLInputElement).value,
       avatar_url: (document.getElementById('charAvatar') as HTMLInputElement).value || null,
       description: (document.getElementById('charDesc') as HTMLTextAreaElement).value || null,
-      personality: (document.getElementById('charPersonality') as HTMLTextAreaElement).value || null,
       system_prompt: (document.getElementById('charSystemPrompt') as HTMLTextAreaElement).value || null,
       greeting: (document.getElementById('charGreeting') as HTMLTextAreaElement).value || null,
       tags: (document.getElementById('charTags') as HTMLInputElement).value || null,
+      genre: (document.getElementById('charGenre') as HTMLInputElement).value || null,
+      dependencies: drr.dependencies,
+      recommendations: drr.recommendations,
+      restrictions: drr.restrictions,
       is_public: (document.getElementById('charPublic') as HTMLInputElement).checked ? 1 as any : 0,
     };
     try {
@@ -828,17 +853,18 @@ async function renderScenes(): Promise<void> {
     const { scenes } = await getScenes();
     container.innerHTML = `
       <div class="scene-list">
-        <button class="btn-new" id="btnNewScene">+ 新規シーン</button>
+        <button class="btn-new" id="btnNewScene">+ 新規プレース</button>
         ${scenes.map((s: Scene) => `
           <div class="scene-item" data-id="${s.id}">
             <div class="scene-item__info">
               <p class="scene-item__name">${s.name}</p>
-              <p class="scene-item__setting">${s.setting?.slice(0, 80) || ''}</p>
+              <p class="scene-item__setting">${s.description?.slice(0, 80) || s.setting?.slice(0, 80) || ''}</p>
               ${s.mood ? `<span class="scene-item__mood">${s.mood}</span>` : ''}
+              <div class="char-item__tags">${s.tags || ''} ${s.genre ? '<span class=\'tag-genre\'>' + s.genre + '</span>' : ''}</div>
             </div>
             <button class="btn-icon btn-icon--danger" data-action="delete-scene" data-id="${s.id}">🗑</button>
           </div>
-        `).join('') || '<p class="main__empty">シーンがありません</p>'}
+        `).join('') || '<p class="main__empty">プレースがありません</p>'}
       </div>`;
     document.getElementById('btnNewScene')?.addEventListener('click', () => showSceneEditor());
     container.querySelectorAll('[data-action="delete-scene"]').forEach(btn => {
@@ -854,12 +880,15 @@ function showSceneEditor(): void {
   if (!mainContent) return;
   mainContent.innerHTML = `
     <div class="editor">
-      <h2 class="editor__title">新規シーン</h2>
+      <h2 class="editor__title">新規プレース</h2>
       <div class="editor__form">
-        <label class="editor__field"><span>名前</span><input type="text" id="sceneName" /></label>
-        <label class="editor__field"><span>設定 (Setting)</span><textarea id="sceneSetting" rows="3"></textarea></label>
-        <label class="editor__field"><span>コンテキスト</span><textarea id="sceneContext" rows="5"></textarea></label>
+        <label class="editor__field"><span>場所名 ※必須</span><input type="text" id="sceneName" /></label>
+        <label class="editor__field"><span>概要 (どんな場所か) ※必須</span><textarea id="sceneDesc" rows="4" placeholder="どんな場所か"></textarea></label>
+        <label class="editor__field"><span>設定 (任意・個別)</span><textarea id="sceneSetting" rows="3" placeholder="個別で分ける必要がある設定"></textarea></label>
         <label class="editor__field"><span>ムード</span><input type="text" id="sceneMood" /></label>
+        <label class="editor__field"><span>タグ (カンマ区切り)</span><input type="text" id="sceneTags" /></label>
+        <label class="editor__field"><span>ジャンル</span><input type="text" id="sceneGenre" placeholder="例: ファンタジー" /></label>
+        ${depRecRestFields('scene')}
         <label class="editor__field editor__field--row">
           <input type="checkbox" id="scenePublic" />
           <span>公開する</span>
@@ -872,12 +901,18 @@ function showSceneEditor(): void {
     </div>`;
   document.getElementById('sceneCancel')?.addEventListener('click', () => renderScenes());
   document.getElementById('sceneSave')?.addEventListener('click', async () => {
+    const drr = collectDepRecRest('scene');
     try {
       await createScene({
         name: (document.getElementById('sceneName') as HTMLInputElement).value,
-        setting: (document.getElementById('sceneSetting') as HTMLTextAreaElement).value,
-        context: (document.getElementById('sceneContext') as HTMLTextAreaElement).value,
-        mood: (document.getElementById('sceneMood') as HTMLInputElement).value,
+        description: (document.getElementById('sceneDesc') as HTMLTextAreaElement).value || null,
+        setting: (document.getElementById('sceneSetting') as HTMLTextAreaElement).value || null,
+        mood: (document.getElementById('sceneMood') as HTMLInputElement).value || null,
+        tags: (document.getElementById('sceneTags') as HTMLInputElement).value || null,
+        genre: (document.getElementById('sceneGenre') as HTMLInputElement).value || null,
+        dependencies: drr.dependencies,
+        recommendations: drr.recommendations,
+        restrictions: drr.restrictions,
         is_public: (document.getElementById('scenePublic') as HTMLInputElement).checked ? 1 as any : 0,
       });
       renderScenes();
@@ -893,20 +928,19 @@ async function renderRag(): Promise<void> {
     const { documents } = await getRagDocs();
     container.innerHTML = `
       <div class="rag-list">
-        <button class="btn-new" id="btnNewRag">+ 新規ドキュメント</button>
-        <button class="btn-new btn-new--secondary" id="btnBulkRag">一括インポート (JSON)</button>
+        <button class="btn-new" id="btnNewRag">+ 新規RAG (.json)</button>
         ${documents.map((d: RagDocument) => `
           <div class="rag-item" data-id="${d.id}">
             <div class="rag-item__info">
               <p class="rag-item__title">${d.title}</p>
-              <p class="rag-item__source">${d.source || ''}</p>
+              <p class="rag-item__source">${d.source || ''} ${d.genre ? '<span class=\'tag-genre\'>' + d.genre + '</span>' : ''}</p>
+              <div class="char-item__tags">${d.tags || ''}</div>
             </div>
             <button class="btn-icon btn-icon--danger" data-action="delete-rag" data-id="${d.id}">🗑</button>
           </div>
         `).join('') || '<p class="main__empty">RAGドキュメントがありません</p>'}
       </div>`;
     document.getElementById('btnNewRag')?.addEventListener('click', () => showRagEditor());
-    document.getElementById('btnBulkRag')?.addEventListener('click', () => showBulkRagImport());
     container.querySelectorAll('[data-action="delete-rag"]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const id = Number((btn as HTMLElement).dataset.id);
@@ -920,11 +954,14 @@ function showRagEditor(): void {
   if (!mainContent) return;
   mainContent.innerHTML = `
     <div class="editor">
-      <h2 class="editor__title">新規RAGドキュメント</h2>
+      <h2 class="editor__title">新規RAG (.json)</h2>
       <div class="editor__form">
-        <label class="editor__field"><span>タイトル</span><input type="text" id="ragTitle" /></label>
-        <label class="editor__field"><span>ソース</span><input type="text" id="ragSource" /></label>
-        <label class="editor__field"><span>内容</span><textarea id="ragContent" rows="10"></textarea></label>
+        <label class="editor__field"><span>タイトル ※必須</span><input type="text" id="ragTitle" /></label>
+        <label class="editor__field"><span>JSON本文 ※必須</span><textarea id="ragContent" rows="10" placeholder='{"key": "value"}'></textarea></label>
+        <label class="editor__field"><span>ソース (任意)</span><input type="text" id="ragSource" /></label>
+        <label class="editor__field"><span>タグ (カンマ区切り)</span><input type="text" id="ragTags" /></label>
+        <label class="editor__field"><span>ジャンル</span><input type="text" id="ragGenre" placeholder="例: SF" /></label>
+        ${depRecRestFields('rag')}
         <div class="editor__actions">
           <button class="btn-secondary" id="ragCancel">キャンセル</button>
           <button class="btn-primary" id="ragSave">保存</button>
@@ -933,118 +970,128 @@ function showRagEditor(): void {
     </div>`;
   document.getElementById('ragCancel')?.addEventListener('click', () => renderRag());
   document.getElementById('ragSave')?.addEventListener('click', async () => {
+    const drr = collectDepRecRest('rag');
     try {
       await createRagDoc({
         title: (document.getElementById('ragTitle') as HTMLInputElement).value,
-        source: (document.getElementById('ragSource') as HTMLInputElement).value,
         content: (document.getElementById('ragContent') as HTMLTextAreaElement).value,
-      });
+        source: (document.getElementById('ragSource') as HTMLInputElement).value || null,
+        tags: (document.getElementById('ragTags') as HTMLInputElement).value || null,
+        genre: (document.getElementById('ragGenre') as HTMLInputElement).value || null,
+        dependencies: drr.dependencies,
+        recommendations: drr.recommendations,
+        restrictions: drr.restrictions,
+      } as any);
       renderRag();
     } catch (e) { showError(`保存エラー: ${e}`); }
   });
 }
 
-function showBulkRagImport(): void {
+// ===== Packs =====
+async function renderPacks(): Promise<void> {
+  const container = document.getElementById('worksContent') || mainContent;
+  if (!container) return;
+  container.innerHTML = '<p class="main__loading">読み込み中…</p>';
+  try {
+    const [packsRes, charsRes, scenesRes] = await Promise.all([
+      getPacks().catch(() => ({ packs: [] })),
+      getCharacters().catch(() => ({ characters: [] })),
+      getScenes().catch(() => ({ scenes: [] })),
+    ]);
+    const packs: Pack[] = (packsRes as any).packs || [];
+    const chars: Character[] = (charsRes as any).characters || [];
+    const scenes: Scene[] = (scenesRes as any).scenes || [];
+    const charMap: Record<number, string> = {};
+    chars.forEach(c => charMap[c.id] = c.name);
+    const sceneMap: Record<number, string> = {};
+    scenes.forEach(s => sceneMap[s.id] = s.name);
+
+    container.innerHTML = `
+      <div class="pack-list">
+        <button class="btn-new" id="btnNewPack">+ 新規Pack</button>
+        <p class="pack-hint" style="color:var(--muted-foreground);font-size:0.85em;margin:8px 0">キャラクター + プレース + RAG を組み合わせてチャットできます</p>
+        ${packs.map((p: Pack) => `
+          <div class="pack-item" data-id="${p.id}" style="border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0;cursor:pointer">
+            <p style="font-weight:600">${p.name}</p>
+            <p style="font-size:0.85em;color:var(--muted-foreground)">${p.description?.slice(0, 100) || ''}</p>
+            <div style="display:flex;gap:8px;margin-top:4px;font-size:0.8em">
+              ${p.character_id ? `<span>👤 ${charMap[p.character_id] || '?'}</span>` : ''}
+              ${p.scene_id ? `<span>📍 ${sceneMap[p.scene_id] || '?'}</span>` : ''}
+              ${p.rag_ids ? `<span>📄 RAG</span>` : ''}
+            </div>
+            <div style="margin-top:8px">
+              <button class="btn-icon btn-icon--danger" data-action="delete-pack" data-id="${p.id}" style="font-size:0.8em">🗑</button>
+            </div>
+          </div>
+        `).join('') || '<p class="main__empty">Packがありません。「+ 新規Pack」から作成できます</p>'}
+      </div>`;
+    document.getElementById('btnNewPack')?.addEventListener('click', () => showPackEditor(chars, scenes));
+    container.querySelectorAll('[data-action="delete-pack"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = Number((btn as HTMLElement).dataset.id);
+        if (confirm('削除しますか？')) { await deletePack(id); renderPacks(); }
+      });
+    });
+    container.querySelectorAll('.pack-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const id = Number((el as HTMLElement).dataset.id);
+        navigateTo('chat');
+        // TODO: pack_idでチャット開始
+      });
+    });
+  } catch (e) { container.innerHTML = `<p class="main__loading">エラー: ${e}</p>`; }
+}
+
+function showPackEditor(chars: Character[], scenes: Scene[]): void {
   if (!mainContent) return;
+  const ragCheckboxes = chars.length > 0 ? '' : '';
   mainContent.innerHTML = `
     <div class="editor">
-      <h2 class="editor__title">RAG一括インポート</h2>
-      <p class="editor__hint">JSON配列を貼り付けてください。最大500件/回</p>
+      <h2 class="editor__title">新規Pack</h2>
       <div class="editor__form">
-        <label class="editor__field"><span>JSON</span><textarea id="bulkRagJson" rows="15" placeholder='[{"title":"例","content":"内容","source":"出典"}]'></textarea></label>
+        <label class="editor__field"><span>Pack名 ※必須</span><input type="text" id="packName" /></label>
+        <label class="editor__field"><span>説明</span><textarea id="packDesc" rows="3"></textarea></label>
+        <label class="editor__field"><span>キャラクター</span>
+          <select id="packChar">
+            <option value="">-- 選択 --</option>
+            ${chars.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+          </select>
+        </label>
+        <label class="editor__field"><span>プレース</span>
+          <select id="packScene">
+            <option value="">-- 選択 --</option>
+            ${scenes.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+          </select>
+        </label>
+        <label class="editor__field"><span>タグ (カンマ区切り)</span><input type="text" id="packTags" /></label>
+        <label class="editor__field"><span>ジャンル</span><input type="text" id="packGenre" /></label>
+        <label class="editor__field editor__field--row">
+          <input type="checkbox" id="packPublic" />
+          <span>公開する</span>
+        </label>
         <div class="editor__actions">
-          <button class="btn-secondary" id="bulkRagCancel">キャンセル</button>
-          <button class="btn-primary" id="bulkRagImport">インポート</button>
+          <button class="btn-secondary" id="packCancel">キャンセル</button>
+          <button class="btn-primary" id="packSave">保存</button>
         </div>
       </div>
     </div>`;
-  document.getElementById('bulkRagCancel')?.addEventListener('click', () => renderRag());
-  document.getElementById('bulkRagImport')?.addEventListener('click', async () => {
+  document.getElementById('packCancel')?.addEventListener('click', () => renderPacks());
+  document.getElementById('packSave')?.addEventListener('click', async () => {
     try {
-      const json = (document.getElementById('bulkRagJson') as HTMLTextAreaElement).value;
-      const docs = JSON.parse(json);
-      const result = await bulkImportRag(docs);
-      alert(`${result.imported}件インポート完了`);
-      renderRag();
-    } catch (e) { showError(`インポートエラー: ${e}`); }
+      await createPack({
+        name: (document.getElementById('packName') as HTMLInputElement).value,
+        description: (document.getElementById('packDesc') as HTMLTextAreaElement).value || null,
+        character_id: (document.getElementById('packChar') as HTMLSelectElement).value ? Number((document.getElementById('packChar') as HTMLSelectElement).value) : null,
+        scene_id: (document.getElementById('packScene') as HTMLSelectElement).value ? Number((document.getElementById('packScene') as HTMLSelectElement).value) : null,
+        tags: (document.getElementById('packTags') as HTMLInputElement).value || null,
+        genre: (document.getElementById('packGenre') as HTMLInputElement).value || null,
+        is_public: (document.getElementById('packPublic') as HTMLInputElement).checked ? 1 as any : 0,
+      });
+      renderPacks();
+    } catch (e) { showError(`保存エラー: ${e}`); }
   });
 }
-
-async function renderTopics(): Promise<void> {
-  if (!mainContent) return;
-  mainContent.innerHTML = '<p class="main__loading">読み込み中…</p>';
-  try {
-    const { characters } = await getPublicCharacters();
-    mainContent.innerHTML = `
-      <div class="topics">
-        <h2 class="topics__title">トピック</h2>
-        <p class="topics__desc">人気のキャラクター</p>
-        <div class="topics__grid">
-          ${characters.map((c: Character, i: number) => `
-            <div class="topic-card" data-id="${c.id}">
-              <div class="topic-card__rank">#${i + 1}</div>
-              ${c.avatar_url ? `<img src="${c.avatar_url}" class="topic-card__avatar" />` : '<div class="topic-card__avatar topic-card__avatar--placeholder"></div>'}
-              <p class="topic-card__name">${c.name}</p>
-              <p class="topic-card__desc">${c.description?.slice(0, 50) || ''}</p>
-            </div>
-          `).join('') || '<p class="main__empty">まだトピックがありません</p>'}
-        </div>
-      </div>`;
-    mainContent.querySelectorAll('.topic-card').forEach(el => {
-      el.addEventListener('click', () => {
-        const id = (el as HTMLElement).dataset.id;
-        if (id) navigateToCharDetail(Number(id));
-      });
-    });
-  } catch (e) { mainContent.innerHTML = `<p class="main__loading">エラー: ${e}</p>`; }
-}
-
-async function renderProfile(): Promise<void> {
-  if (!mainContent) return;
-  mainContent.innerHTML = '<p class="main__loading">読み込み中…</p>';
-  try {
-    const { user } = await getUser();
-    mainContent.innerHTML = `
-      <div class="profile">
-        <h2 class="profile__title">プロフィール</h2>
-        <div class="profile__card">
-          ${user.avatar_url ? `<img src="${user.avatar_url}" class="profile__avatar" />` : '<div class="profile__avatar profile__avatar--placeholder"></div>'}
-          <div class="profile__info">
-            <p class="profile__name">${user.username || user.name}</p>
-            <p class="profile__email">${user.email}</p>
-            <p class="profile__userid">ID: #${user.id}</p>
-            ${user.birth_date ? `<p class="profile__since">生年月日: ${user.birth_date}</p>` : ''}
-            <p class="profile__since">登録日: ${user.created_at?.slice(0, 10) || ''}</p>
-          </div>
-        </div>
-      </div>`;
-
-    // このページを描画した直後に登録する。モジュール読み込み時に1回だけ登録すると、
-    // まだDOMに存在しないボタンに対して呼ぶことになりバインドされない
-    // (このページを開くたびにHTMLが作り直されるので、その都度登録し直す必要がある)。
-    document.getElementById('signoutBtn')?.addEventListener('click', () => {
-      clearStoredAuth();
-      currentUser = null;
-      updateAuthUI();
-    });
-
-    document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
-      if (!confirm('本当にアカウントを削除しますか？\n\n・チャット履歴\n・キャラクター\n・シーン\n・RAGドキュメント\n・ユーザーアカウント\n\nこれらは全て完全に削除され、復元できません。')) return;
-      if (!confirm('最終確認：本当に削除しますか？')) return;
-      try {
-        await deleteAccount();
-        clearStoredAuth();
-        clearApiToken();
-        currentUser = null;
-        alert('アカウントが削除されました。');
-        updateAuthUI();
-      } catch (e) {
-        alert('削除に失敗しました: ' + e);
-      }
-    });
-  } catch (e) { mainContent.innerHTML = `<p class="main__loading">エラー: ${e}</p>`; }
-}
-
 
 function showError(msg: string): void {
   if (mainContent) {
