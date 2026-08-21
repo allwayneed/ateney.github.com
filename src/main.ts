@@ -6,13 +6,13 @@
  */
 
 import {
-  authLogin, getApiToken, setApiToken, clearApiToken,
   getCharacters, getPublicCharacters, getCharacter,
   createCharacter, updateCharacter, deleteCharacter,
-  getScenes, createScene, updateScene, deleteScene,
+  getScenes, createScene, deleteScene,
   getRagDocs, createRagDoc, deleteRagDoc, bulkImportRag,
   getChatHistory, saveChat, clearChat, sendChatMessage,
   getUser, getFlStatus as getFlApiStatus, deleteAccount, updateProfile,
+  setApiToken, clearApiToken,
   type Character, type Scene, type RagDocument,
 } from './api';
 import {
@@ -20,7 +20,7 @@ import {
   initGoogleLogin, loginWithLine, loginWithApple,
   type AuthUser,
 } from './auth';
-import { initFlClient, connectFl, disconnectFl, getFlStatus, type FlStatus } from './fl-client';
+import { initFlClient, connectFl, disconnectFl, getFlStatus } from './fl-client';
 
 const loginScreen = document.getElementById('loginScreen') as HTMLElement | null;
 const accountIcon = document.getElementById('accountIcon') as HTMLButtonElement | null;
@@ -56,7 +56,6 @@ function updateAuthUI(): void {
 // ===== オンボーディング（初回ログイン時） =====
 function showOnboarding(): void {
   if (!mainContent) return;
-  const step = 1;
   mainContent.innerHTML = `
     <div class="onboarding" id="onboarding">
       <div class="onboarding__card">
@@ -914,29 +913,32 @@ async function renderProfile(): Promise<void> {
           </div>
         </div>
       </div>`;
+
+    // このページを描画した直後に登録する。モジュール読み込み時に1回だけ登録すると、
+    // まだDOMに存在しないボタンに対して呼ぶことになりバインドされない
+    // (このページを開くたびにHTMLが作り直されるので、その都度登録し直す必要がある)。
+    document.getElementById('signoutBtn')?.addEventListener('click', () => {
+      clearStoredAuth();
+      currentUser = null;
+      updateAuthUI();
+    });
+
+    document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
+      if (!confirm('本当にアカウントを削除しますか？\n\n・チャット履歴\n・キャラクター\n・シーン\n・RAGドキュメント\n・ユーザーアカウント\n\nこれらは全て完全に削除され、復元できません。')) return;
+      if (!confirm('最終確認：本当に削除しますか？')) return;
+      try {
+        await deleteAccount();
+        clearStoredAuth();
+        clearApiToken();
+        currentUser = null;
+        alert('アカウントが削除されました。');
+        updateAuthUI();
+      } catch (e) {
+        alert('削除に失敗しました: ' + e);
+      }
+    });
   } catch (e) { mainContent.innerHTML = `<p class="main__loading">エラー: ${e}</p>`; }
 }
-
-document.getElementById('signoutBtn')?.addEventListener('click', () => {
-  clearStoredAuth();
-  currentUser = null;
-  updateAuthUI();
-});
-
-document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
-  if (!confirm('本当にアカウントを削除しますか？\n\n・チャット履歴\n・キャラクター\n・シーン\n・RAGドキュメント\n・ユーザーアカウント\n\nこれらは全て完全に削除され、復元できません。')) return;
-  if (!confirm('最終確認：本当に削除しますか？')) return;
-  try {
-    await deleteAccount();
-    clearStoredAuth();
-    clearApiToken();
-    currentUser = null;
-    alert('アカウントが削除されました。');
-    updateAuthUI();
-  } catch (e) {
-    alert('削除に失敗しました: ' + e);
-  }
-});
 
 function showError(msg: string): void {
   if (mainContent) {
