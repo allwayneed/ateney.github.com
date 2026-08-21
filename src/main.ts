@@ -204,16 +204,24 @@ function onboardingStep3(username: string, birthDate: string): void {
     btn.disabled = true;
     btn.textContent = '保存中…';
     try {
-      await updateProfile({ username, birth_date: birthDate, fl_consent: flConsent });
+      const result = await updateProfile({ username, birth_date: birthDate, fl_consent: flConsent });
+      // 新トークンが返ってきたら更新（初回オンボーディング時）
+      if (result.token) {
+        const { setApiToken } = await import('./api');
+        setApiToken(result.token);
+      }
       // ローカルの認証情報を更新
       if (currentUser) {
         currentUser.username = username;
         currentUser.needs_onboarding = false;
-        // localStorageの情報も更新
+        currentUser.userId = result.user?.id ?? currentUser.userId;
+        currentUser.token = result.token || currentUser.token;
         const stored = getStoredAuth();
         if (stored) {
           stored.username = username;
           stored.needs_onboarding = false;
+          stored.userId = result.user?.id ?? stored.userId;
+          stored.token = result.token || stored.token;
           localStorage.setItem('ateney_auth', JSON.stringify(stored));
         }
       }

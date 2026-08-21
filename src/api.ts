@@ -125,7 +125,7 @@ export async function updateProfile(data: {
   username?: string;
   birth_date?: string;
   fl_consent?: boolean;
-}): Promise<{ ok: boolean }> {
+}): Promise<{ ok: boolean; token?: string; user?: { id: number; username: string } }> {
   return apiFetch('/user/profile', {
     method: 'PUT',
     body: JSON.stringify(data),
