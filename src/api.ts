@@ -150,6 +150,20 @@ export async function clearChat(): Promise<{ ok: boolean } | null> {
   return apiFetchSafe('/chat/clear', { method: 'DELETE' });
 }
 
+// ===== チャット送信（AI応答） =====
+// POST /api/chat/send { message, character_id?, scene_id? }
+// → { reply: string, adapter_value?: number }
+export async function sendChatMessage(message: string, characterId?: number, sceneId?: number): Promise<{ reply: string; adapter_value?: number } | null> {
+  try {
+    return await apiFetch('/chat/send', {
+      method: 'POST',
+      body: JSON.stringify({ message, character_id: characterId, scene_id: sceneId }),
+    });
+  } catch {
+    return null;
+  }
+}
+
 // ===== キャラクター =====
 export async function getCharacters(): Promise<{ characters: Character[] }> {
   return apiFetch('/characters');

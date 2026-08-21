@@ -745,3 +745,27 @@ button {
 @media (max-width: 640px) {
   .fed__grid { grid-template-columns: 1fr; }
 }
+
+
+/* ===== チャット画面 ===== */
+.chat { display: flex; flex-direction: column; height: calc(100vh - 120px); max-width: 800px; margin: 0 auto; }
+.chat__header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.chat__title { font-size: 1.25rem; font-weight: 700; margin: 0; }
+.chat__char-select { flex: 1; min-width: 160px; }
+.chat__select { width: 100%; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; padding: 0.4rem 0.6rem; font-size: 0.875rem; }
+.chat__clear-btn { font-size: 0.75rem; padding: 0.35rem 0.75rem; }
+.chat__messages { flex: 1; overflow-y: auto; background: #0f0f0f; border: 1px solid #222; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.chat__msg { max-width: 80%; padding: 0.75rem 1rem; border-radius: 12px; line-height: 1.5; }
+.chat__msg--user { align-self: flex-end; background: #1e3a5f; border: 1px solid #2563eb; }
+.chat__msg--ai { align-self: flex-start; background: #1a1a1a; border: 1px solid #333; }
+.chat__msg-label { font-size: 0.7rem; color: #888; margin-bottom: 0.25rem; }
+.chat__adapter { color: #2563eb; }
+.chat__msg-text { font-size: 0.9rem; white-space: pre-wrap; word-break: break-word; }
+.chat__input-area { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.chat__input { flex: 1; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #fff; padding: 0.6rem; font-size: 0.9rem; resize: none; font-family: inherit; }
+.chat__input:focus { outline: none; border-color: #2563eb; }
+.chat__send-btn { padding: 0.6rem 1.5rem; white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .chat__msg { max-width: 90%; }
+}

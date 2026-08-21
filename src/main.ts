@@ -11,7 +11,7 @@ import {
   createCharacter, updateCharacter, deleteCharacter,
   getScenes, createScene, updateScene, deleteScene,
   getRagDocs, createRagDoc, deleteRagDoc, bulkImportRag,
-  getChatHistory, saveChat, clearChat,
+  getChatHistory, saveChat, clearChat, sendChatMessage,
   getUser, getFlStatus as getFlApiStatus, deleteAccount, updateProfile,
   type Character, type Scene, type RagDocument,
 } from './api';
@@ -391,13 +391,14 @@ settingsBack?.addEventListener('click', closeSettings);
 document.getElementById('menuSettings')?.addEventListener('click', (e) => { e.preventDefault(); openSettings(); });
 
 // ===== ナビゲーション =====
-type Page = 'home' | 'works' | 'characters' | 'scenes' | 'rag' | 'topics' | 'profile' | 'fed';
+type Page = 'home' | 'chat' | 'works' | 'characters' | 'scenes' | 'rag' | 'topics' | 'profile' | 'fed';
 
 document.getElementById('menuHome')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('home'); });
 document.getElementById('menuWorks')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('works'); });
 document.getElementById('menuCharacters')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('characters'); });
 document.getElementById('menuScenes')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('scenes'); });
 document.getElementById('menuRag')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('rag'); });
+document.getElementById('menuChat')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('chat'); });
 document.getElementById('menuTopics')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('topics'); });
 document.getElementById('menuProfile')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('profile'); });
 document.getElementById('menuFed')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('fed'); });
@@ -406,6 +407,7 @@ function navigateTo(page: Page): void {
   closeMenu();
   switch (page) {
     case 'home': renderHome(); break;
+    case 'chat': renderChat(); break;
     case 'works': renderWorks(); break;
     case 'characters': renderCharacters(); break;
     case 'scenes': renderScenes(); break;
@@ -414,6 +416,147 @@ function navigateTo(page: Page): void {
     case 'profile': renderProfile(); break;
     case 'fed': renderFed(); break;
   }
+}
+
+// ===== チャット画面 =====
+let chatMessages: { role: string; content: string; adapter_value?: number | null }[] = [];
+let chatLoading = false;
+let chatCharacterId: number | undefined = undefined;
+
+async function renderChat(): Promise<void> {
+  if (!mainContent) return;
+
+  // 履歴読み込み（初回のみ）
+  if (chatMessages.length === 0) {
+    const hist = await getChatHistory(100).catch(() => null);
+    if (hist?.messages) {
+      chatMessages = hist.messages.reverse().map(m => ({ role: m.role, content: m.content, adapter_value: m.adapter_value }));
+    }
+  }
+
+  // 公開キャラクター一覧取得（キャラ選択用）
+  const charRes = await getPublicCharacters().catch(() => ({ characters: [] }));
+  const charOptions = charRes.characters.map((c: Character) =>
+    '<option value="' + c.id + '"' + (chatCharacterId === c.id ? ' selected' : '') + '>' + c.name + '</option>'
+  ).join('');
+
+  // メッセージHTML
+  const msgHtml = chatMessages.map((m: { role: string; content: string; adapter_value?: number | null }) => {
+    const isUser = m.role === 'user';
+    const cls = isUser ? 'chat__msg--user' : 'chat__msg--ai';
+    const label = isUser ? 'あなた' : 'AI';
+    const adapter = m.adapter_value !== null && m.adapter_value !== undefined
+      ? ' <span class="chat__adapter">adapter: ' + m.adapter_value + '</span>' : '';
+    return '<div class="chat__msg ' + cls + '"><div class="chat__msg-label">' + label + adapter + '</div><div class="chat__msg-text">' + escapeHtml(m.content) + '</div></div>';
+  }).join('');
+
+  mainContent.innerHTML = [
+    '<div class="chat">',
+    '  <div class="chat__header">',
+    '    <h2 class="chat__title">チャット</h2>',
+    '    <div class="chat__char-select">',
+    '      <select id="chatCharSelect" class="chat__select">',
+    '        <option value="">キャラクターなし</option>',
+    '        ' + charOptions,
+    '      </select>',
+    '    </div>',
+    '    <button class="btn-secondary chat__clear-btn" id="chatClearBtn">履歴削除</button>',
+    '  </div>',
+    '  <div class="chat__messages" id="chatMessages">' + msgHtml + '</div>',
+    '  <div class="chat__input-area">',
+    '    <textarea id="chatInput" class="chat__input" placeholder="メッセージを入力..." rows="2"></textarea>',
+    '    <button class="btn-primary chat__send-btn" id="chatSendBtn"' + (chatLoading ? ' disabled' : '') + '>' + (chatLoading ? '送信中...' : '送信') + '</button>',
+    '  </div>',
+    '</div>'
+  ].join('\n');
+
+  // キャラ選択
+  document.getElementById('chatCharSelect')?.addEventListener('change', (e) => {
+    const val = (e.target as HTMLSelectElement).value;
+    chatCharacterId = val ? Number(val) : undefined;
+  });
+
+  // 履歴削除
+  document.getElementById('chatClearBtn')?.addEventListener('click', async () => {
+    if (!confirm('チャット履歴を全て削除しますか？')) return;
+    await clearChat();
+    chatMessages = [];
+    renderChat();
+  });
+
+  // 送信
+  const input = document.getElementById('chatInput') as HTMLTextAreaElement | null;
+  const sendBtn = document.getElementById('chatSendBtn') as HTMLButtonElement | null;
+
+  const doSend = async () => {
+    if (!input || !sendBtn) return;
+    const text = input.value.trim();
+    if (!text || chatLoading) return;
+
+    // ユーザーメッセージ追加
+    chatMessages.push({ role: 'user', content: text });
+    input.value = '';
+    chatLoading = true;
+    sendBtn.disabled = true;
+    sendBtn.textContent = '送信中...';
+
+    // 即座にUI更新
+    renderChatMessages();
+
+    // バックエンドに送信
+    const result = await sendChatMessage(text, chatCharacterId);
+    if (result) {
+      chatMessages.push({ role: 'assistant', content: result.reply, adapter_value: result.adapter_value ?? null });
+      // 履歴保存
+      await saveChat('user', text).catch(() => {});
+      await saveChat('assistant', result.reply, result.adapter_value ?? undefined).catch(() => {});
+    } else {
+      chatMessages.push({ role: 'assistant', content: 'バックエンドが応答していません（/api/chat/send 未実装）', adapter_value: null });
+    }
+
+    chatLoading = false;
+    renderChatMessages();
+    sendBtn.disabled = false;
+    sendBtn.textContent = '送信';
+  };
+
+  sendBtn?.addEventListener('click', doSend);
+  input?.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      doSend();
+    }
+  });
+
+  // 一番下までスクロール
+  const msgEl = document.getElementById('chatMessages');
+  if (msgEl) msgEl.scrollTop = msgEl.scrollHeight;
+}
+
+function renderChatMessages(): void {
+  const container = document.getElementById('chatMessages');
+  if (!container) return;
+  const msgHtml = chatMessages.map((m: { role: string; content: string; adapter_value?: number | null }) => {
+    const isUser = m.role === 'user';
+    const cls = isUser ? 'chat__msg--user' : 'chat__msg--ai';
+    const label = isUser ? 'あなた' : 'AI';
+    const adapter = m.adapter_value !== null && m.adapter_value !== undefined
+      ? ' <span class="chat__adapter">adapter: ' + m.adapter_value + '</span>' : '';
+    return '<div class="chat__msg ' + cls + '"><div class="chat__msg-label">' + label + adapter + '</div><div class="chat__msg-text">' + escapeHtml(m.content) + '</div></div>';
+  }).join('');
+  container.innerHTML = msgHtml;
+  container.scrollTop = container.scrollHeight;
+
+  // 送信ボタンの状態更新
+  const sendBtn = document.getElementById('chatSendBtn') as HTMLButtonElement | null;
+  if (sendBtn) {
+    sendBtn.disabled = chatLoading;
+    sendBtn.textContent = chatLoading ? '送信中...' : '送信';
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 async function renderHome(): Promise<void> {
