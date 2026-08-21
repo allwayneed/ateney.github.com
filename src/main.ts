@@ -12,7 +12,7 @@ import {
   getScenes, createScene, updateScene, deleteScene,
   getRagDocs, createRagDoc, deleteRagDoc, bulkImportRag,
   getChatHistory, saveChat, clearChat,
-  getUser, getFlStatus, updateProfile,
+  getUser, getFlStatus, deleteAccount, updateProfile,
   type Character, type Scene, type RagDocument,
 } from './api';
 import {

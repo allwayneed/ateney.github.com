@@ -693,3 +693,17 @@ button {
 .date-dial__input::-webkit-outer-spin-button,
 .date-dial__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .date-dial__label { font-size: 0.75rem; color: #666; }
+
+/* ===== アカウント削除ボタン ===== */
+.profile__danger {
+  margin-top: 2rem; padding-top: 1.5rem;
+  border-top: 1px solid #333;
+}
+.btn-danger {
+  background: transparent; border: 1px solid #dc2626; border-radius: 8px;
+  color: #dc2626; cursor: pointer; font-size: 0.875rem;
+  padding: 0.5rem 1rem; transition: all 0.15s; width: 100%;
+}
+.btn-danger:hover {
+  background: #dc2626; color: #fff;
+}
