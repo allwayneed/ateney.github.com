@@ -113,9 +113,26 @@
         </div>
       </div>
       <div class="settings__group">
+        <p class="settings__group-label">連合学習</p>
+        <div class="settings__item">
+          <div class="settings__item-text"><p class="settings__item-title">分散学習に協力</p><p class="settings__item-desc">ブラウザでAI学習を支援</p></div>
+          <label class="toggle"><input type="checkbox" id="toggleFlConsent"><span class="toggle__slider"></span></label>
+        </div>
+      </div>
+      <div class="settings__group">
+        <p class="settings__group-label">AI設定</p>
+        <div class="settings__item">
+          <div class="settings__item-text"><p class="settings__item-title">サーバープロンプト</p><p class="settings__item-desc">システム既定（読み取り専用）</p></div>
+        </div>
+        <div class="settings__prompt-readonly" id="serverPromptDisplay">サーバー未接続</div>
+      </div>
+      <div class="settings__group">
         <p class="settings__group-label">アカウント</p>
         <div class="settings__item settings__item--danger" id="logoutBtn">
           <div class="settings__item-text"><p class="settings__item-title">ログアウト</p></div>
+        </div>
+        <div class="settings__item settings__item--danger" id="deleteAccountBtn2">
+          <div class="settings__item-text"><p class="settings__item-title">アカウントを削除</p><p class="settings__item-desc">全データが完全に削除されます</p></div>
         </div>
       </div>
       <div class="settings__group">

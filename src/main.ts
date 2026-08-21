@@ -389,6 +389,63 @@ accountIcon?.addEventListener('click', openSettings);
 settingsBack?.addEventListener('click', closeSettings);
 document.getElementById('menuSettings')?.addEventListener('click', (e) => { e.preventDefault(); openSettings(); });
 
+// 設定を開いた時にFEDトグルとサーバープロンプトを初期化
+const _origOpenSettings = openSettings;
+openSettings = function(): void {
+  settings?.classList.add('open');
+  settings?.setAttribute('aria-hidden', 'false');
+  // FEDトグルの状態を反映
+  const toggle = document.getElementById('toggleFlConsent') as HTMLInputElement | null;
+  if (toggle) {
+    const stored = getStoredAuth();
+    toggle.checked = !!stored?.fl_consent;
+    toggle.onchange = async () => {
+      try {
+        await updateProfile({ fl_consent: toggle.checked });
+        const s = getStoredAuth();
+        if (s) { s.fl_consent = toggle.checked; localStorage.setItem('ateney_auth', JSON.stringify(s)); }
+        if (toggle.checked) {
+          // FL自動接続をトリガー
+          const flRes = await getFlApiStatus().catch(() => null);
+          if (flRes?.fl_server_url && flRes.fl_server_url !== 'not-configured' && flRes.fl_server_url !== 'offline' && flRes.fl_auth_token) {
+            connectFl({ serverUrl: flRes.fl_server_url, authToken: flRes.fl_auth_token });
+          }
+        } else {
+          disconnectFl();
+        }
+      } catch (e) { alert('更新に失敗しました: ' + e); }
+    };
+  }
+  // サーバープロンプト表示（読み取り専用）
+  const promptDisplay = document.getElementById('serverPromptDisplay');
+  if (promptDisplay) {
+    getFlApiStatus().then(fl => {
+      if (fl?.fl_server_url && fl.fl_server_url !== 'not-configured' && fl.fl_server_url !== 'offline') {
+        promptDisplay.textContent = 'サーバー接続中（システム既定プロンプト使用中）';
+      } else {
+        promptDisplay.textContent = 'サーバー未接続';
+      }
+    }).catch(() => { promptDisplay!.textContent = 'サーバー未接続'; });
+  }
+};
+
+// アカウント削除ボタン（設定モーダル内）
+document.getElementById('deleteAccountBtn2')?.addEventListener('click', async () => {
+  if (!confirm('本当にアカウントを削除しますか？\n\n・チャット履歴\n・キャラクター\n・シーン\n・RAGドキュメント\n・ユーザーアカウント\n\nこれらは全て完全に削除され、復元できません。')) return;
+  if (!confirm('最終確認：本当に削除しますか？')) return;
+  try {
+    await deleteAccount();
+    clearStoredAuth();
+    clearApiToken();
+    currentUser = null;
+    alert('アカウントが削除されました。');
+    updateAuthUI();
+    closeSettings();
+  } catch (e) {
+    alert('削除に失敗しました: ' + e);
+  }
+});
+
 // ===== ナビゲーション =====
 type Page = 'home' | 'chat' | 'works' | 'characters' | 'scenes' | 'rag' | 'topics' | 'profile' | 'fed';
 
@@ -418,9 +475,13 @@ function navigateTo(page: Page): void {
 }
 
 // ===== チャット画面 =====
+// 送られてきたHTMLデザインベースのチャットUI
+// @: → ナレーター（三本線アイコン）
+// @キャラ名: → キャラアイコン（丸）+ 吹き出し
 let chatMessages: { role: string; content: string; adapter_value?: number | null }[] = [];
 let chatLoading = false;
 let chatCharacterId: number | undefined = undefined;
+let chatCharMap: Record<number, { name: string; avatar?: string }> = {};
 
 async function renderChat(): Promise<void> {
   if (!mainContent) return;
@@ -433,58 +494,54 @@ async function renderChat(): Promise<void> {
     }
   }
 
-  // 公開キャラクター一覧取得（キャラ選択用）
+  // 公開キャラクター取得
   const charRes = await getPublicCharacters().catch(() => ({ characters: [] }));
-  const charOptions = charRes.characters.map((c: Character) =>
-    '<option value="' + c.id + '"' + (chatCharacterId === c.id ? ' selected' : '') + '>' + c.name + '</option>'
-  ).join('');
-
-  // メッセージHTML
-  const msgHtml = chatMessages.map((m: { role: string; content: string; adapter_value?: number | null }) => {
-    const isUser = m.role === 'user';
-    const cls = isUser ? 'chat__msg--user' : 'chat__msg--ai';
-    const label = isUser ? 'あなた' : 'AI';
-    const adapter = m.adapter_value !== null && m.adapter_value !== undefined
-      ? ' <span class="chat__adapter">adapter: ' + m.adapter_value + '</span>' : '';
-    return '<div class="chat__msg ' + cls + '"><div class="chat__msg-label">' + label + adapter + '</div><div class="chat__msg-text">' + escapeHtml(m.content) + '</div></div>';
-  }).join('');
+  chatCharMap = {};
+  charRes.characters.forEach((c: Character) => { chatCharMap[c.id] = { name: c.name, avatar: c.avatar_url }; });
 
   mainContent.innerHTML = [
-    '<div class="chat">',
-    '  <div class="chat__header">',
-    '    <h2 class="chat__title">チャット</h2>',
-    '    <div class="chat__char-select">',
-    '      <select id="chatCharSelect" class="chat__select">',
-    '        <option value="">キャラクターなし</option>',
-    '        ' + charOptions,
-    '      </select>',
+    '<div class="chat-page">',
+    '  <div class="chat-topbar">',
+    '    <div class="chat-topbar__left">',
+    '      <span class="chat-topbar__label">チャット</span>',
+    '      <span class="chat-topbar__badge" id="chatPieceCount">0 ピース</span>',
     '    </div>',
-    '    <button class="btn-secondary chat__clear-btn" id="chatClearBtn">履歴削除</button>',
+    '    <div class="chat-topbar__icons">',
+    '      <button class="chat-icon-btn" id="chatReloadBtn" title="会話をリセット">↺</button>',
+    '    </div>',
     '  </div>',
-    '  <div class="chat__messages" id="chatMessages">' + msgHtml + '</div>',
-    '  <div class="chat__input-area">',
-    '    <textarea id="chatInput" class="chat__input" placeholder="メッセージを入力..." rows="2"></textarea>',
-    '    <button class="btn-primary chat__send-btn" id="chatSendBtn"' + (chatLoading ? ' disabled' : '') + '>' + (chatLoading ? '送信中...' : '送信') + '</button>',
+    '  <div class="chat-area" id="chatArea"></div>',
+    '  <div class="chat-input-bar">',
+    '    <input id="chatInput" class="chat-input-field" placeholder="メッセージ" autocomplete="off" />',
+    '    <button class="chat-star-btn" id="chatStarBtn" title="＊ を入力">＊</button>',
+    '    <button class="chat-send-btn" id="chatSendBtn" title="送信"' + (chatLoading ? ' disabled' : '') + '>▶</button>',
     '  </div>',
     '</div>'
   ].join('\n');
 
-  // キャラ選択
-  document.getElementById('chatCharSelect')?.addEventListener('change', (e) => {
-    const val = (e.target as HTMLSelectElement).value;
-    chatCharacterId = val ? Number(val) : undefined;
+  // メッセージ描画
+  renderChatBubbles();
+
+  // リセット
+  document.getElementById('chatReloadBtn')?.addEventListener('click', () => {
+    if (!confirm('会話をリセットしますか？')) return;
+    chatMessages = [];
+    renderChatBubbles();
   });
 
-  // 履歴削除
-  document.getElementById('chatClearBtn')?.addEventListener('click', async () => {
-    if (!confirm('チャット履歴を全て削除しますか？')) return;
-    await clearChat();
-    chatMessages = [];
-    renderChat();
+  // ＊ボタン
+  document.getElementById('chatStarBtn')?.addEventListener('click', () => {
+    const el = document.getElementById('chatInput') as HTMLInputElement | null;
+    if (!el) return;
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    el.value = el.value.slice(0, start) + '＊' + el.value.slice(end);
+    el.focus();
+    el.selectionStart = el.selectionEnd = start + 1;
   });
 
   // 送信
-  const input = document.getElementById('chatInput') as HTMLTextAreaElement | null;
+  const input = document.getElementById('chatInput') as HTMLInputElement | null;
   const sendBtn = document.getElementById('chatSendBtn') as HTMLButtonElement | null;
 
   const doSend = async () => {
@@ -492,21 +549,15 @@ async function renderChat(): Promise<void> {
     const text = input.value.trim();
     if (!text || chatLoading) return;
 
-    // ユーザーメッセージ追加
     chatMessages.push({ role: 'user', content: text });
     input.value = '';
     chatLoading = true;
     sendBtn.disabled = true;
-    sendBtn.textContent = '送信中...';
+    renderChatBubbles();
 
-    // 即座にUI更新
-    renderChatMessages();
-
-    // バックエンドに送信
     const result = await sendChatMessage(text, chatCharacterId);
     if (result) {
       chatMessages.push({ role: 'assistant', content: result.reply, adapter_value: result.adapter_value ?? null });
-      // 履歴保存
       await saveChat('user', text).catch(() => {});
       await saveChat('assistant', result.reply, result.adapter_value ?? undefined).catch(() => {});
     } else {
@@ -514,44 +565,105 @@ async function renderChat(): Promise<void> {
     }
 
     chatLoading = false;
-    renderChatMessages();
+    renderChatBubbles();
     sendBtn.disabled = false;
-    sendBtn.textContent = '送信';
   };
 
   sendBtn?.addEventListener('click', doSend);
   input?.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      doSend();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
   });
 
-  // 一番下までスクロール
-  const msgEl = document.getElementById('chatMessages');
-  if (msgEl) msgEl.scrollTop = msgEl.scrollHeight;
+  // FL接続状態で piece count表示
+  const flStatus = getFlStatus();
+  const pieceEl = document.getElementById('chatPieceCount');
+  if (pieceEl) pieceEl.textContent = flStatus.connected ? '接続中' : '未接続';
 }
 
-function renderChatMessages(): void {
-  const container = document.getElementById('chatMessages');
-  if (!container) return;
-  const msgHtml = chatMessages.map((m: { role: string; content: string; adapter_value?: number | null }) => {
-    const isUser = m.role === 'user';
-    const cls = isUser ? 'chat__msg--user' : 'chat__msg--ai';
-    const label = isUser ? 'あなた' : 'AI';
-    const adapter = m.adapter_value !== null && m.adapter_value !== undefined
-      ? ' <span class="chat__adapter">adapter: ' + m.adapter_value + '</span>' : '';
-    return '<div class="chat__msg ' + cls + '"><div class="chat__msg-label">' + label + adapter + '</div><div class="chat__msg-text">' + escapeHtml(m.content) + '</div></div>';
-  }).join('');
-  container.innerHTML = msgHtml;
-  container.scrollTop = container.scrollHeight;
+// チャットバブル描画（@:と@名前:のパース付き）
+function renderChatBubbles(): void {
+  const area = document.getElementById('chatArea');
+  if (!area) return;
 
-  // 送信ボタンの状態更新
-  const sendBtn = document.getElementById('chatSendBtn') as HTMLButtonElement | null;
-  if (sendBtn) {
-    sendBtn.disabled = chatLoading;
-    sendBtn.textContent = chatLoading ? '送信中...' : '送信';
+  let html = '';
+  for (const m of chatMessages) {
+    if (m.role === 'user') {
+      html += '<div class="chat-bubble chat-bubble--user">' + escapeHtml(m.content) + '</div>';
+    } else {
+      // AIメッセージを @: と @名前: でパース
+      html += parseAiMessage(m.content, m.adapter_value);
+    }
   }
+
+  if (chatLoading) {
+    html += '<div class="chat-bubble chat-bubble--loading">生成中…</div>';
+  }
+
+  area.innerHTML = html;
+  area.scrollTop = area.scrollHeight;
+
+  const sendBtn = document.getElementById('chatSendBtn') as HTMLButtonElement | null;
+  if (sendBtn) { sendBtn.disabled = chatLoading; }
+}
+
+// AIメッセージパーサー
+// @: または @ナレーター: → ナレーター表示（三本線アイコン、吹き出しなし）
+// @キャラ名: → キャラアイコン（丸）+ 吹き出し
+// それ以外 → 通常のAI吹き出し
+function parseAiMessage(content: string, adapterValue?: number | null): string {
+  const lines = content.split('\n');
+  let html = '';
+  let currentSpeaker: { type: 'narrator' | 'character' | 'ai'; name?: string; avatar?: string } | null = null;
+  let buffer = '';
+
+  const flushBuffer = () => {
+    if (!buffer.trim()) { buffer = ''; return; }
+    if (currentSpeaker?.type === 'narrator') {
+      html += '<div class="chat-narrator"><div class="chat-narrator__icon">≡</div><div class="chat-narrator__text">' + escapeHtml(buffer.trim()) + '</div></div>';
+    } else if (currentSpeaker?.type === 'character') {
+      const avatar = currentSpeaker.avatar
+        ? '<img src="' + currentSpeaker.avatar + '" class="chat-char__avatar" />'
+        : '<div class="chat-char__avatar chat-char__avatar--placeholder">' + (currentSpeaker.name || '?')[0] + '</div>';
+      html += '<div class="chat-char"><div class="chat-char__avatar-wrap">' + avatar + '</div><div class="chat-char__bubble">' + escapeHtml(buffer.trim()) + '</div></div>';
+    } else {
+      html += '<div class="chat-bubble chat-bubble--ai">' + escapeHtml(buffer.trim()) + '</div>';
+    }
+    buffer = '';
+  };
+
+  for (const line of lines) {
+    // @: または @ナレーター: で始まる行
+    const narratorMatch = line.match(/^@(?:ナレーター|narrator|):\s*(.*)/i);
+    // @キャラ名: で始まる行
+    const charMatch = line.match(/^@([^\s:]+):\s*(.*)/);
+
+    if (narratorMatch) {
+      flushBuffer();
+      currentSpeaker = { type: 'narrator' };
+      buffer = narratorMatch[1];
+    } else if (charMatch && !narratorMatch) {
+      // キャラクター名が已知かチェック
+      const name = charMatch[1];
+      const known = Object.values(chatCharMap).find(c => c.name === name);
+      if (known) {
+        flushBuffer();
+        currentSpeaker = { type: 'character', name, avatar: known.avatar };
+        buffer = charMatch[2];
+      } else {
+        // 未知のキャラ名でもキャラ表示
+        flushBuffer();
+        currentSpeaker = { type: 'character', name };
+        buffer = charMatch[2];
+      }
+    } else {
+      // 継続行または通常テキスト
+      if (buffer) buffer += '\n' + line;
+      else buffer = line;
+    }
+  }
+  flushBuffer();
+
+  return html;
 }
 
 function escapeHtml(s: string): string {
@@ -902,14 +1014,7 @@ async function renderProfile(): Promise<void> {
             <p class="profile__email">${user.email}</p>
             <p class="profile__userid">ID: #${user.id}</p>
             ${user.birth_date ? `<p class="profile__since">生年月日: ${user.birth_date}</p>` : ''}
-            ${user.fl_consent ? '<p class="profile__fl">分散学習: 協力中</p>' : '<p class="profile__fl">分散学習: 未協力</p>'}
             <p class="profile__since">登録日: ${user.created_at?.slice(0, 10) || ''}</p>
-          </div>
-          <div class="profile__actions">
-            <button class="btn-secondary" id="signoutBtn">ログアウト</button>
-          </div>
-          <div class="profile__danger">
-            <button class="btn-danger" id="deleteAccountBtn">アカウントを削除</button>
           </div>
         </div>
       </div>`;
@@ -939,6 +1044,7 @@ async function renderProfile(): Promise<void> {
     });
   } catch (e) { mainContent.innerHTML = `<p class="main__loading">エラー: ${e}</p>`; }
 }
+
 
 function showError(msg: string): void {
   if (mainContent) {
