@@ -112,26 +112,46 @@ export function initGoogleLogin(
 }
 
 export function loginWithLine(): void {
+  const state = generateState();
+  sessionStorage.setItem('ateney_oauth_state', state);
+  sessionStorage.setItem('ateney_oauth_provider', 'line');
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: LINE_CHANNEL_ID,
     redirect_uri: `${window.location.origin}/auth/callback`,
-    state: generateState(),
+    state,
     scope: 'profile openid email',
   });
   window.location.href = `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`;
 }
 
 export function loginWithApple(): void {
+  const state = generateState();
+  sessionStorage.setItem('ateney_oauth_state', state);
+  sessionStorage.setItem('ateney_oauth_provider', 'apple');
   const params = new URLSearchParams({
     response_type: 'code id_token',
     client_id: APPLE_CLIENT_ID,
     redirect_uri: `${window.location.origin}/auth/callback`,
-    state: generateState(),
+    state,
     scope: 'name email',
     response_mode: 'form_post',
   });
   window.location.href = `https://appleid.apple.com/auth/authorize?${params.toString()}`;
+}
+
+/**
+ * OAuthコールバックの検証用。/auth/callback 側で
+ * 「サーバーから返ってきたstateが、ログイン開始時に自分で保存したものと一致するか」
+ * を確認するために使う。一致しなければCSRF攻撃の可能性があるため処理を中断すること。
+ * 検証後は使い捨てなので呼んだ時点で消す。
+ */
+export function consumeOAuthState(): { state: string | null; provider: string | null } {
+  const state = sessionStorage.getItem('ateney_oauth_state');
+  const provider = sessionStorage.getItem('ateney_oauth_provider');
+  sessionStorage.removeItem('ateney_oauth_state');
+  sessionStorage.removeItem('ateney_oauth_provider');
+  return { state, provider };
 }
 
 export function logout(): void {
