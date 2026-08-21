@@ -222,6 +222,7 @@ function onboardingStep3(username: string, birthDate: string): void {
           stored.needs_onboarding = false;
           stored.userId = result.user?.id ?? stored.userId;
           stored.token = result.token || stored.token;
+          stored.fl_consent = flConsent;
           localStorage.setItem('ateney_auth', JSON.stringify(stored));
         }
       }
@@ -811,4 +812,35 @@ updateAuthUI();
 // FLクライアント初期化
 initFlClient();
 
-if (isLoggedIn()) navigateTo('home');
+// ===== 全ページ共通: FL自動接続 =====
+// fl_consentがtrueなら、どのページを開いてもFLサーバーに自動接続する
+let flAutoConnectTried = false;
+async function tryAutoConnectFl(): Promise<void> {
+  if (flAutoConnectTried) return;
+  const s = getFlStatus();
+  if (s.connected || s.connecting) return;
+
+  const flRes = await getFlApiStatus().catch(() => null);
+  if (!flRes || !flRes.fl_server_url || flRes.fl_server_url === 'not-configured' || flRes.fl_server_url === 'offline') return;
+  if (!flRes.fl_auth_token) return;
+
+  flAutoConnectTried = true;
+  connectFl({ serverUrl: flRes.fl_server_url, authToken: flRes.fl_auth_token });
+}
+
+// ログイン済みでfl_consent=trueなら自動接続（5秒ごとにリトライ、サーバー起動前でもOK）
+if (isLoggedIn()) {
+  navigateTo('home');
+  const user = getStoredAuth();
+  if (user?.fl_consent) {
+    tryAutoConnectFl();
+    // サーバーがまだ起動してない場合に備えてリトライ
+    setInterval(() => {
+      const s = getFlStatus();
+      if (!s.connected && !s.connecting) {
+        flAutoConnectTried = false;
+        tryAutoConnectFl();
+      }
+    }, 15000);
+  }
+}

@@ -18,6 +18,7 @@ export interface AuthUser {
   needs_onboarding?: boolean;
   username?: string | null;
   userId?: number;
+  fl_consent?: boolean;
 }
 
 const STORAGE_KEY = 'ateney_auth';
@@ -89,6 +90,7 @@ export function initGoogleLogin(
             needs_onboarding: result.user.needs_onboarding,
             username: result.user.username,
             userId: result.user.id,
+            fl_consent: !!result.user.fl_consent,
           };
           setStoredAuth(user);
           onSuccess(user);
