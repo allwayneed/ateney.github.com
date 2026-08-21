@@ -25,9 +25,9 @@ export interface Character {
   name: string;
   avatar_url: string | null;
   description: string | null;
-  personality?: string;
-  system_prompt?: string;
-  greeting?: string;
+  personality?: string | null;
+  system_prompt?: string | null;
+  greeting?: string | null;
   tags?: string | null;
   metadata?: string | null;
   is_public: number;
