@@ -245,9 +245,15 @@ initGoogleLogin('googleLoginBtn', (user) => {
 // ===== FED (連合学習) =====
 async function renderFed(): Promise<void> {
   if (!mainContent) return;
-  const flRes = await getFlApiStatus().catch(() => ({ fl_server_url: 'offline', fl_token_required: true }));
+  const flRes = await getFlApiStatus().catch(() => ({ fl_server_url: 'offline', fl_auth_token: null, fl_token_required: true }));
   const serverUrl = flRes.fl_server_url === 'not-configured' || flRes.fl_server_url === 'offline' ? '' : flRes.fl_server_url;
+  const authToken = flRes.fl_auth_token || '';
   const s = getFlStatus();
+
+  // サーバーURL + トークンがあれば自動接続
+  if (serverUrl && authToken && !s.connected && !s.connecting) {
+    connectFl({ serverUrl, authToken });
+  }
 
   // 条件付きHTMLを先に文字列で組み立て
   const bannedInfo = s.banned
@@ -272,8 +278,12 @@ async function renderFed(): Promise<void> {
   const statusText = s.connected ? '接続中' : s.connecting ? '接続中...' : '未接続';
   const rankDisplay = s.banned ? 'F (停止中)' : s.rank;
   const lossDisplay = s.lastLoss !== null ? s.lastLoss.toFixed(4) : '-';
-  const connectDisabled = s.connected || s.connecting ? 'disabled' : '';
   const disconnectDisabled = !s.connected ? 'disabled' : '';
+
+  // サーバーが未設定の場合の表示
+  const serverStatus = !serverUrl
+    ? '<div class="fed__offline-msg">FLサーバーがオフラインです。サーバーが起動すると自動接続します。</div>'
+    : '';
 
   mainContent.innerHTML = [
     '<div class="fed">',
@@ -302,19 +312,9 @@ async function renderFed(): Promise<void> {
     '    </div>',
     '  </div>',
     '  ' + lossChart,
+    '  ' + serverStatus,
     '  <div class="fed__controls">',
-    '    <div class="fed__input-group">',
-    '      <label>サーバー URL</label>',
-    '      <input type="text" id="flServerUrl" value="' + serverUrl + '" placeholder="ws://localhost:8765" class="fed__input" />',
-    '    </div>',
-    '    <div class="fed__input-group">',
-    '      <label>認証トークン</label>',
-    '      <input type="password" id="flAuthToken" placeholder="FLサーバートークン" class="fed__input" />',
-    '    </div>',
-    '    <div class="fed__buttons">',
-    '      <button class="btn-primary" id="flConnectBtn" ' + connectDisabled + '>接続して学習開始</button>',
-    '      <button class="btn-secondary" id="flDisconnectBtn" ' + disconnectDisabled + '>切断</button>',
-    '    </div>',
+    '    <button class="btn-secondary" id="flDisconnectBtn" ' + disconnectDisabled + '>切断</button>',
     '  </div>',
     '  <div class="fed__log-wrap">',
     '    <div class="fed__card-header">ログ</div>',
@@ -326,14 +326,7 @@ async function renderFed(): Promise<void> {
     '    <p>ブラウザのGPU (WebGPU/WebGL) を使用してローカル学習を行います。</p>',
     '  </div>',
     '</div>'
-  ].join('\n');
-
-  document.getElementById('flConnectBtn')?.addEventListener('click', () => {
-    const url = (document.getElementById('flServerUrl') as HTMLInputElement).value;
-    const token = (document.getElementById('flAuthToken') as HTMLInputElement).value;
-    if (!url) { alert('サーバーURLを入力してください'); return; }
-    connectFl({ serverUrl: url, authToken: token });
-  });
+  ].join('' + '\n');
 
   document.getElementById('flDisconnectBtn')?.addEventListener('click', () => {
     disconnectFl();
