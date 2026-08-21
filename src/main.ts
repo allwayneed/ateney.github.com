@@ -293,7 +293,7 @@ settingsBack?.addEventListener('click', closeSettings);
 document.getElementById('menuSettings')?.addEventListener('click', (e) => { e.preventDefault(); openSettings(); });
 
 // ===== ナビゲーション =====
-type Page = 'home' | 'works' | 'characters' | 'scenes' | 'rag' | 'topics' | 'profile';
+type Page = 'home' | 'works' | 'characters' | 'scenes' | 'rag' | 'topics' | 'profile' | 'fed';
 
 document.getElementById('menuHome')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('home'); });
 document.getElementById('menuWorks')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('works'); });
@@ -302,6 +302,7 @@ document.getElementById('menuScenes')?.addEventListener('click', (e: Event) => {
 document.getElementById('menuRag')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('rag'); });
 document.getElementById('menuTopics')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('topics'); });
 document.getElementById('menuProfile')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('profile'); });
+document.getElementById('menuFed')?.addEventListener('click', (e: Event) => { e.preventDefault(); navigateTo('fed'); });
 
 function navigateTo(page: Page): void {
   closeMenu();
@@ -313,6 +314,7 @@ function navigateTo(page: Page): void {
     case 'rag': renderRag(); break;
     case 'topics': renderTopics(); break;
     case 'profile': renderProfile(); break;
+    case 'fed': renderFed(); break;
   }
 }
 
@@ -679,4 +681,8 @@ function showError(msg: string): void {
 }
 
 updateAuthUI();
+// FLクライアント初期化
+let flStatus: FlStatus | null = null;
+initFlClient((s) => { flStatus = s; });
+
 if (isLoggedIn()) navigateTo('home');
