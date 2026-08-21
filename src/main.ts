@@ -6,20 +6,21 @@
  */
 
 import {
-  authLogin, getApiToken, clearApiToken,
+  authLogin, getApiToken, setApiToken, clearApiToken,
   getCharacters, getPublicCharacters, getCharacter,
   createCharacter, updateCharacter, deleteCharacter,
   getScenes, createScene, updateScene, deleteScene,
   getRagDocs, createRagDoc, deleteRagDoc, bulkImportRag,
   getChatHistory, saveChat, clearChat,
-  getUser, getFlStatus, deleteAccount, updateProfile,
+  getUser, getFlStatus as getFlApiStatus, deleteAccount, updateProfile,
   type Character, type Scene, type RagDocument,
 } from './api';
 import {
-  isLoggedIn, getStoredAuth, logout,
+  isLoggedIn, getStoredAuth, clearStoredAuth, logout,
   initGoogleLogin, loginWithLine, loginWithApple,
   type AuthUser,
 } from './auth';
+import { initFlClient, connectFl, disconnectFl, getFlStatus, type FlStatus } from './fl-client';
 
 const loginScreen = document.getElementById('loginScreen') as HTMLElement | null;
 const accountIcon = document.getElementById('accountIcon') as HTMLButtonElement | null;
@@ -207,7 +208,6 @@ function onboardingStep3(username: string, birthDate: string): void {
       const result = await updateProfile({ username, birth_date: birthDate, fl_consent: flConsent });
       // 新トークンが返ってきたら更新（初回オンボーディング時）
       if (result.token) {
-        const { setApiToken } = await import('./api');
         setApiToken(result.token);
       }
       // ローカルの認証情報を更新
@@ -237,15 +237,119 @@ function onboardingStep3(username: string, birthDate: string): void {
 
 // ===== Google ログイン =====
 initGoogleLogin('googleLoginBtn', (user) => {
+  setApiToken(user.token);
+  currentUser = user;
   updateAuthUI();
-}, (msg) => { showError(msg); });
+}, (msg: string) => { showError(msg); });
+
+// ===== FED (連合学習) =====
+async function renderFed(): Promise<void> {
+  if (!mainContent) return;
+  const flRes = await getFlApiStatus().catch(() => ({ fl_server_url: 'offline', fl_token_required: true }));
+  const serverUrl = flRes.fl_server_url === 'not-configured' || flRes.fl_server_url === 'offline' ? '' : flRes.fl_server_url;
+  const s = getFlStatus();
+
+  // 条件付きHTMLを先に文字列で組み立て
+  const bannedInfo = s.banned
+    ? '<div class="fed__detail fed__detail--warn">残り ' + s.banRemaining + '秒</div>'
+    : '';
+
+  const lossChart = s.lossHistory.length > 0
+    ? '<div class="fed__chart"><div class="fed__card-header">Loss推移</div><div class="fed__loss-chart">' +
+      s.lossHistory.map((loss: number, i: number) => {
+        const maxLoss = Math.max(...s.lossHistory, 1);
+        const heightPct = (loss / maxLoss) * 100;
+        return '<div class="fed__loss-bar" style="height:' + heightPct + '%" title="R' + (i+1) + ': ' + loss.toFixed(4) + '"></div>';
+      }).join('') +
+      '</div></div>'
+    : '';
+
+  const logLines = s.log.map((l: string) =>
+    '<div class="fed__log-line">' + l + '</div>'
+  ).join('');
+
+  const statusDot = s.connected ? 'fed__status-dot--online' : s.connecting ? 'fed__status-dot--connecting' : 'fed__status-dot--offline';
+  const statusText = s.connected ? '接続中' : s.connecting ? '接続中...' : '未接続';
+  const rankDisplay = s.banned ? 'F (停止中)' : s.rank;
+  const lossDisplay = s.lastLoss !== null ? s.lastLoss.toFixed(4) : '-';
+  const connectDisabled = s.connected || s.connecting ? 'disabled' : '';
+  const disconnectDisabled = !s.connected ? 'disabled' : '';
+
+  mainContent.innerHTML = [
+    '<div class="fed">',
+    '  <h2 class="fed__title">⚡ Federated Learning</h2>',
+    '  <p class="fed__subtitle">ブラウザ上でAIアダプタの学習に参加</p>',
+    '  <div class="fed__grid">',
+    '    <div class="fed__card">',
+    '      <div class="fed__card-header">接続状態</div>',
+    '      <div class="fed__status-row">',
+    '        <span class="fed__status-dot ' + statusDot + '"></span>',
+    '        <span>' + statusText + '</span>',
+    '      </div>',
+    '      <div class="fed__detail">Backend: <strong>' + s.backend + '</strong></div>',
+    '      <div class="fed__detail">Client: <strong>' + s.clientId.slice(0, 8) + '</strong></div>',
+    '    </div>',
+    '    <div class="fed__card">',
+    '      <div class="fed__card-header">ランク</div>',
+    '      <div class="fed__rank ' + (s.banned ? 'fed__rank--banned' : '') + '">' + rankDisplay + '</div>',
+    '      <div class="fed__detail">ロール: <strong>' + s.role + '</strong></div>',
+    '      ' + bannedInfo,
+    '    </div>',
+    '    <div class="fed__card">',
+    '      <div class="fed__card-header">学習ラウンド</div>',
+    '      <div class="fed__stat-num">' + s.rounds + '</div>',
+    '      <div class="fed__detail">最終loss: <strong>' + lossDisplay + '</strong></div>',
+    '    </div>',
+    '  </div>',
+    '  ' + lossChart,
+    '  <div class="fed__controls">',
+    '    <div class="fed__input-group">',
+    '      <label>サーバー URL</label>',
+    '      <input type="text" id="flServerUrl" value="' + serverUrl + '" placeholder="ws://localhost:8765" class="fed__input" />',
+    '    </div>',
+    '    <div class="fed__input-group">',
+    '      <label>認証トークン</label>',
+    '      <input type="password" id="flAuthToken" placeholder="FLサーバートークン" class="fed__input" />',
+    '    </div>',
+    '    <div class="fed__buttons">',
+    '      <button class="btn-primary" id="flConnectBtn" ' + connectDisabled + '>接続して学習開始</button>',
+    '      <button class="btn-secondary" id="flDisconnectBtn" ' + disconnectDisabled + '>切断</button>',
+    '    </div>',
+    '  </div>',
+    '  <div class="fed__log-wrap">',
+    '    <div class="fed__card-header">ログ</div>',
+    '    <div class="fed__log" id="flLog">' + logLines + '</div>',
+    '  </div>',
+    '  <div class="fed__info">',
+    '    <p>このページを開いている間、あなたのブラウザがAIモデルの微調整に参加します。</p>',
+    '    <p>学習データはサーバーから配信され、重みの更新結果のみが送信されます。</p>',
+    '    <p>ブラウザのGPU (WebGPU/WebGL) を使用してローカル学習を行います。</p>',
+    '  </div>',
+    '</div>'
+  ].join('\n');
+
+  document.getElementById('flConnectBtn')?.addEventListener('click', () => {
+    const url = (document.getElementById('flServerUrl') as HTMLInputElement).value;
+    const token = (document.getElementById('flAuthToken') as HTMLInputElement).value;
+    if (!url) { alert('サーバーURLを入力してください'); return; }
+    connectFl({ serverUrl: url, authToken: token });
+  });
+
+  document.getElementById('flDisconnectBtn')?.addEventListener('click', () => {
+    disconnectFl();
+  });
+
+  const logEl = document.getElementById('flLog');
+  if (logEl) logEl.scrollTop = logEl.scrollHeight;
+}
 
 document.getElementById('lineLoginBtn')?.addEventListener('click', () => loginWithLine());
 document.getElementById('appleLoginBtn')?.addEventListener('click', () => loginWithApple());
 
 // ログアウト（手動のみ、401では呼ばれない）
 document.getElementById('logoutBtn')?.addEventListener('click', () => {
-  logout(); currentUser = null; updateAuthUI(); closeSettings();
+  logout(); currentUser = null;
+  updateAuthUI(); closeSettings();
 });
 
 // 401イベントリスナー削除 — 自動ログアウトしない
@@ -321,7 +425,7 @@ function navigateTo(page: Page): void {
 async function renderHome(): Promise<void> {
   if (!mainContent) return;
   // FL statusは公開エンドポイントから取得、他はcatch
-  const flRes = await getFlStatus().catch(() => ({ fl_server_url: 'offline', fl_token_required: true }));
+  const flRes = await getFlApiStatus().catch(() => ({ fl_server_url: 'offline', fl_token_required: true }));
   const charRes = await getPublicCharacters().catch(() => ({ characters: [] }));
   const userId = currentUser?.userId ?? '?';
   const username = currentUser?.username || currentUser?.name || 'ユーザー';
@@ -665,10 +769,37 @@ async function renderProfile(): Promise<void> {
             ${user.fl_consent ? '<p class="profile__fl">分散学習: 協力中</p>' : '<p class="profile__fl">分散学習: 未協力</p>'}
             <p class="profile__since">登録日: ${user.created_at?.slice(0, 10) || ''}</p>
           </div>
+          <div class="profile__actions">
+            <button class="btn-secondary" id="signoutBtn">ログアウト</button>
+          </div>
+          <div class="profile__danger">
+            <button class="btn-danger" id="deleteAccountBtn">アカウントを削除</button>
+          </div>
         </div>
       </div>`;
   } catch (e) { mainContent.innerHTML = `<p class="main__loading">エラー: ${e}</p>`; }
 }
+
+document.getElementById('signoutBtn')?.addEventListener('click', () => {
+  clearStoredAuth();
+  currentUser = null;
+  updateAuthUI();
+});
+
+document.getElementById('deleteAccountBtn')?.addEventListener('click', async () => {
+  if (!confirm('本当にアカウントを削除しますか？\n\n・チャット履歴\n・キャラクター\n・シーン\n・RAGドキュメント\n・ユーザーアカウント\n\nこれらは全て完全に削除され、復元できません。')) return;
+  if (!confirm('最終確認：本当に削除しますか？')) return;
+  try {
+    await deleteAccount();
+    clearStoredAuth();
+    clearApiToken();
+    currentUser = null;
+    alert('アカウントが削除されました。');
+    updateAuthUI();
+  } catch (e) {
+    alert('削除に失敗しました: ' + e);
+  }
+});
 
 function showError(msg: string): void {
   if (mainContent) {
@@ -680,9 +811,11 @@ function showError(msg: string): void {
   }
 }
 
+
+
 updateAuthUI();
+
 // FLクライアント初期化
-let flStatus: FlStatus | null = null;
-initFlClient((s) => { flStatus = s; });
+initFlClient();
 
 if (isLoggedIn()) navigateTo('home');

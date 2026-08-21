@@ -47,11 +47,11 @@ function getOrCreateClientId(): string {
   return id;
 }
 
-export function initFlClient(callback: (s: FlStatus) => void): void {
+export function initFlClient(callback?: (s: FlStatus) => void): void {
   clientId = getOrCreateClientId();
   status.clientId = clientId;
-  onStatusChange = callback;
-  callback(status);
+  onStatusChange = callback ?? null;
+  callback?.(status);
 }
 
 function updateStatus(patch: Partial<FlStatus>): void {

@@ -120,6 +120,10 @@ export async function getUser(): Promise<{ user: any }> {
   return apiFetch('/user');
 }
 
+export async function deleteAccount(): Promise<{ ok: boolean }> {
+  return apiFetch('/user', { method: 'DELETE' });
+}
+
 // ===== プロフィール更新（オンボーディング） =====
 export async function updateProfile(data: {
   username?: string;
