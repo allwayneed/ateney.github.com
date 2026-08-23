@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン - ateney</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #f5f5f7;
+      --bg-elevated: #ffffff;
+      --text: #1a1a1a;
+      --text-secondary: #6e6e73;
+      --border: #d1d1d6;
+      --shadow: rgba(0, 0, 0, 0.08);
+      --accent: #5b8def;
+
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --transition: 0.35s var(--ease);
+    }
+
+    body.dark {
+      --bg: #0d0d0f;
+      --bg-elevated: #1c1c1e;
+      --text: #f5f5f7;
+      --text-secondary: #98989d;
+      --border: #38383a;
+      --shadow: rgba(0, 0, 0, 0.4);
+      --accent: #7c9fff;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      font-family: -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+
+      transition: background var(--transition), color var(--transition);
+
+      position: relative;
+    }
+
+    /* Floating background blobs */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 0;
+      transition: background var(--transition);
+    }
+
+    .blob-1 {
+      width: 320px;
+      height: 320px;
+      background: var(--accent);
+      top: -80px;
+      left: -60px;
+      animation: blob-float-1 18s var(--ease) infinite;
+    }
+
+    .blob-2 {
+      width: 260px;
+      height: 260px;
+      background: #ff6b9d;
+      bottom: -60px;
+      right: -40px;
+      animation: blob-float-2 22s var(--ease) infinite;
+    }
+
+    @keyframes blob-float-1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33%      { transform: translate(40px, 30px) scale(1.1); }
+      66%      { transform: translate(-20px, 50px) scale(0.95); }
+    }
+
+    @keyframes blob-float-2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33%      { transform: translate(-30px, -40px) scale(1.15); }
+      66%      { transform: translate(20px, -20px) scale(0.9); }
+    }
+
+    /* Dark mode toggle — top right */
+    .darkmode {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--text);
+      border-radius: 50%;
+      z-index: 100;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.2s var(--ease), color var(--transition);
+      overflow: hidden;
+    }
+
+    .darkmode:active { background: var(--bg-elevated); }
+
+    .darkmode .toggle-track { position: relative; width: 26px; height: 26px; }
+
+    .darkmode .sun-core {
+      position: absolute; top: 50%; left: 50%;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: currentColor; transform: translate(-50%, -50%);
+      transition: all 0.4s var(--ease);
+    }
+
+    .darkmode .moon-cover {
+      position: absolute; top: 50%; left: 50%;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--bg);
+      transform: translate(-50%, -50%) translateX(0);
+      opacity: 0;
+      transition: opacity 0.4s var(--ease), background var(--transition), transform 0.4s var(--ease);
+    }
+
+    .darkmode .rays {
+      position: absolute; top: 50%; left: 50%;
+      width: 26px; height: 26px;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.3s var(--ease);
+      animation: rays-spin 20s linear infinite;
+    }
+
+    @keyframes rays-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+    .darkmode .rays span {
+      position: absolute; top: 0; left: 50%;
+      width: 2px; height: 5px; border-radius: 2px;
+      background: currentColor;
+      transform-origin: 50% 13px;
+      transform: translateX(-50%) rotate(calc(var(--i) * 45deg));
+      transition: height 0.3s var(--ease), opacity 0.3s var(--ease);
+    }
+
+    .darkmode.active .rays { animation-play-state: paused; }
+    .darkmode.active .rays span { height: 0; opacity: 0; }
+    .darkmode.active .moon-cover {
+      opacity: 1;
+      transform: translate(-50%, -50%) translateX(5px) translateY(-2px);
+    }
+
+    /* Login card */
+    .login-card {
+      position: relative;
+      z-index: 1;
+
+      width: min(90%, 400px);
+      padding: 40px 32px 32px;
+      border-radius: 20px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      box-shadow: 0 12px 48px var(--shadow);
+      text-align: center;
+
+      opacity: 0;
+      transform: translateY(24px) scale(0.96);
+      animation: card-enter 0.6s var(--ease-spring) forwards;
+
+      transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+    }
+
+    @keyframes card-enter {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Logo with wave */
+    .logo {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+      color: var(--text);
+      cursor: default;
+    }
+
+    .logo span {
+      display: inline-block;
+      transition: transform 0.4s var(--ease-spring);
+    }
+
+    .logo:hover span {
+      animation: logo-wave 0.8s var(--ease);
+    }
+
+    @keyframes logo-wave {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .logo span:nth-child(1) { animation-delay: 0ms; }
+    .logo span:nth-child(2) { animation-delay: 60ms; }
+    .logo span:nth-child(3) { animation-delay: 120ms; }
+    .logo span:nth-child(4) { animation-delay: 180ms; }
+    .logo span:nth-child(5) { animation-delay: 240ms; }
+    .logo span:nth-child(6) { animation-delay: 300ms; }
+
+    .subtitle {
+      margin: 0 0 28px;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* OAuth buttons */
+    .oauth-btn {
+      width: 100%;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-elevated);
+      color: var(--text);
+
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+
+      transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease),
+                  background 0.2s var(--ease), border-color 0.2s var(--ease);
+
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .oauth-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--shadow);
+    }
+
+    .oauth-btn:active {
+      transform: scale(0.98);
+    }
+
+    .oauth-btn + .oauth-btn {
+      margin-top: 10px;
+    }
+
+    .oauth-btn svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    /* Google brand colors stay */
+    .oauth-btn.google:hover {
+      border-color: #4285F4;
+    }
+
+    /* LINE */
+    .oauth-btn.line {
+      background: #06C755;
+      border-color: #06C755;
+      color: white;
+    }
+
+    .oauth-btn.line:hover {
+      box-shadow: 0 6px 20px rgba(6, 199, 85, 0.35);
+    }
+
+    /* Apple */
+    .oauth-btn.apple {
+      background: #000;
+      border-color: #000;
+      color: #fff;
+    }
+
+    body.dark .oauth-btn.apple {
+      background: #fff;
+      border-color: #fff;
+      color: #000;
+    }
+
+    /* Divider */
+    .divider {
+      margin: 24px 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      transition: background var(--transition);
+    }
+
+    /* Notice */
+    .notice {
+      font-size: 0.75rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      margin-top: 20px;
+    }
+
+    .notice a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .notice a:hover {
+      text-decoration: underline;
+    }
+
+    /* Loading state on button */
+    .oauth-btn.loading {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .oauth-btn.loading .spinner {
+      display: inline-block;
+    }
+
+    .spinner {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background blobs -->
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <!-- Dark mode toggle -->
+  <button class="darkmode" id="darkmodeButton" aria-label="ダークモード切替">
+    <div class="toggle-track">
+      <div class="rays">
+        <span style="--i: 0"></span><span style="--i: 1"></span>
+        <span style="--i: 2"></span><span style="--i: 3"></span>
+        <span style="--i: 4"></span><span style="--i: 5"></span>
+        <span style="--i: 6"></span><span style="--i: 7"></span>
+      </div>
+      <div class="sun-core"></div>
+      <div class="moon-cover"></div>
+    </div>
+  </button>
+
+  <!-- Login card -->
+  <main class="login-card">
+    <div class="logo" id="logo">
+      <span>a</span><span>t</span><span>e</span><span>n</span><span>e</span><span>y</span>
+    </div>
+    <p class="subtitle">ateneyはateney、おいしいateney</p>
+
+    <button class="oauth-btn google" id="google-login">
+      <svg viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M21.35 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.42z"/>
+        <path fill="#34A853" d="M12 21.7c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.29v2.53A9.74 9.74 0 0 0 12 21.7z"/>
+        <path fill="#FBBC05" d="M6.54 13.78A5.86 5.86 0 0 1 6.24 12c0-.62.11-1.22.3-1.78V7.69H3.29A9.74 9.74 0 0 0 2.25 12c0 1.57.38 3.05 1.04 4.31l3.25-2.53z"/>
+        <path fill="#EA4335" d="M12 6.19c1.43 0 2.71.49 3.72 1.46l2.79-2.79C16.84 3.24 14.63 2.3 12 2.3a9.74 9.74 0 0 0-8.71 5.39l3.25 2.53C7.31 7.91 9.46 6.19 12 6.19z"/>
+      </svg>
+      <span class="spinner"></span>
+      Googleでログイン
+    </button>
+
+    <button class="oauth-btn line" id="line-login">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M24 10.3c0 5.35-5.4 9.7-12 9.7-1.1 0-2.16-.12-3.16-.35l-3.58 1.84a.47.47 0 0 1-.7-.5l.36-2.78C1.9 16.9 0 13.8 0 10.3 0 4.95 5.4.6 12 .6s12 4.35 12 9.7z"/>
+      </svg>
+      <span class="spinner"></span>
+      LINEでログイン
+    </button>
+
+    <button class="oauth-btn apple" id="apple-login">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M17.05 12.04c-.03-3.1 2.53-4.6 2.65-4.67-1.45-2.12-3.7-2.41-4.5-2.44-1.92-.2-3.75 1.13-4.72 1.13-.98 0-2.47-1.1-4.06-1.07-2.09.03-4.02 1.22-5.09 3.1-2.17 3.76-.55 9.32 1.56 12.38 1.04 1.5 2.28 3.19 3.91 3.13 1.57-.06 2.16-1.02 4.06-1.02 1.89 0 2.42 1.02 4.08.99 1.69-.03 2.75-1.53 3.78-3.04 1.19-1.74 1.68-3.42 1.71-3.51-.04-.02-3.28-1.26-3.31-5z"/>
+        <path d="M14.07 3.59c.86-1.05 1.44-2.5 1.28-3.94-1.24.05-2.74.82-3.63 1.86-.8.92-1.5 2.39-1.31 3.81 1.38.1 2.79-.7 3.66-1.73z"/>
+      </svg>
+      <span class="spinner"></span>
+      Appleでログイン
+    </button>
+
+    <div class="divider">または</div>
+
+    <p class="notice">
+      ログインすることで、<a href="/terms/">利用規約</a>と<a href="/privacy/">プライバシーポリシー</a>に同意したことになります。
+    </p>
+  </main>
+
+  <script>
+    /* =========================
+       DARK MODE
+    ========================= */
+    const darkmodeButton = document.getElementById("darkmodeButton");
+
+    function applyDarkMode(on) {
+      document.body.classList.toggle("dark", on);
+      darkmodeButton.classList.toggle("active", on);
+    }
+
+    try {
+      const saved = localStorage.getItem("ateney-dark");
+      if (saved === "1") applyDarkMode(true);
+    } catch (e) {}
+
+    darkmodeButton.addEventListener("click", () => {
+      const isDark = !document.body.classList.contains("dark");
+      applyDarkMode(isDark);
+      try { localStorage.setItem("ateney-dark", isDark ? "1" : "0"); } catch (e) {}
+    });
+
+    /* =========================
+       LOGO WAVE
+    ========================= */
+    const logo = document.getElementById("logo");
+    logo.addEventListener("mouseenter", () => {
+      logo.querySelectorAll("span").forEach(s => {
+        s.style.animation = "none";
+        void s.offsetWidth;
+        s.style.animation = "";
+      });
+    });
+
+    /* =========================
+       OAUTH BUTTONS
+    ========================= */
+    function handleOAuth(provider, btn) {
+      btn.classList.add("loading");
+
+      // ここに本実装を入れる
+      // window.location.href = `/auth/${provider}`;
+      setTimeout(() => {
+        btn.classList.remove("loading");
+        alert(`ここに${provider}の本実装を入れる`);
+      }, 1200);
+    }
+
+    document.getElementById("google-login").addEventListener("click", function() {
+      handleOAuth("google", this);
+    });
+
+    document.getElementById("line-login").addEventListener("click", function() {
+      handleOAuth("line", this);
+    });
+
+    document.getElementById("apple-login").addEventListener("click", function() {
+      handleOAuth("apple", this);
+    });
+  </script>
+</body>
+</html>

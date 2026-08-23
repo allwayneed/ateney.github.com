@@ -22,6 +22,7 @@
       --border: #d1d1d6;
       --shadow: rgba(0, 0, 0, 0.08);
       --accent: #5b8def;
+      --danger: #ff4757;
 
       --header-h: 60px;
       --menu-w: 280px;
@@ -39,6 +40,7 @@
       --border: #38383a;
       --shadow: rgba(0, 0, 0, 0.4);
       --accent: #7c9fff;
+      --danger: #ff6b7a;
     }
 
     body {
@@ -50,28 +52,21 @@
       transition: background var(--transition), color var(--transition);
     }
 
-    /* =========================
-       VIEW TRANSITIONS
-    ========================= */
+    /* VIEW TRANSITIONS */
 
     ::view-transition-old(root),
     ::view-transition-new(root) {
       animation: none;
       mix-blend-mode: normal;
     }
-
     ::view-transition-old(root) { z-index: 1; }
     ::view-transition-new(root) { z-index: 9999; }
 
-    /* =========================
-       HEADER
-    ========================= */
+    /* HEADER */
 
     .header {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       height: var(--header-h);
       display: flex;
       align-items: center;
@@ -82,8 +77,6 @@
       z-index: 90;
       transition: background var(--transition), border-color var(--transition);
     }
-
-    /* LOGO (letter wave) */
 
     .logo {
       font-size: 1.35rem;
@@ -99,9 +92,7 @@
       transition: transform 0.4s var(--ease-spring), color 0.3s var(--ease);
     }
 
-    .logo:hover span {
-      animation: logo-wave 0.8s var(--ease);
-    }
+    .logo:hover span { animation: logo-wave 0.8s var(--ease); }
 
     @keyframes logo-wave {
       0%, 100% { transform: translateY(0); }
@@ -114,6 +105,220 @@
     .logo span:nth-child(4) { animation-delay: 180ms; }
     .logo span:nth-child(5) { animation-delay: 240ms; }
     .logo span:nth-child(6) { animation-delay: 300ms; }
+
+    /* =========================
+       ACCOUNT BUTTON + DROPDOWN
+    ========================= */
+
+    .account {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: auto;
+      margin-left: 20px;
+    }
+
+    .account-btn {
+      position: relative;
+      width: 38px;
+      height: 38px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      background: var(--bg-elevated);
+      cursor: pointer;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .account-btn:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.15);
+    }
+
+    /* Login pill button (shows when not logged in) */
+    .login-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 20px;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), opacity 0.2s var(--ease);
+    }
+
+    body.dark .login-pill {
+      color: #0d0d0f;
+    }
+
+    .login-pill:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(91, 141, 239, 0.4);
+    }
+
+    .login-pill:active {
+      transform: scale(0.97);
+    }
+
+    .login-pill svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .account-btn img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .account-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Account dropdown — にょきって出てくる */
+    .account-menu {
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 0;
+      width: 240px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 12px 40px var(--shadow);
+      overflow: hidden;
+      z-index: 95;
+
+      opacity: 0;
+      transform: translateY(-12px) scale(0.96);
+      transform-origin: top left;
+      pointer-events: none;
+      transition:
+        opacity 0.25s var(--ease),
+        transform 0.3s var(--ease-spring);
+    }
+
+    .account-menu.open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    /* User header inside dropdown */
+    .account-menu-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-elevated);
+    }
+
+    .account-menu-header .avatar-sm {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+    }
+
+    .account-menu-header .avatar-sm svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .account-menu-header .user-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .account-menu-header .user-id {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+
+    /* Menu items */
+    .account-menu a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s var(--ease), padding-left 0.2s var(--ease);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .account-menu a:last-child {
+      border-bottom: none;
+    }
+
+    .account-menu a:hover {
+      background: var(--bg-elevated);
+      padding-left: 22px;
+    }
+
+    .account-menu a svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      opacity: 0.55;
+      transition: opacity 0.2s var(--ease);
+    }
+
+    .account-menu a:hover svg {
+      opacity: 0.85;
+    }
+
+    .account-menu a.logout {
+      color: var(--danger);
+    }
+
+    .account-menu a.logout svg {
+      opacity: 0.7;
+    }
+
+    /* Badge for notifications */
+    .badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: white;
+      font-size: 0.68rem;
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 5px;
+    }
+
+    body.dark .badge {
+      color: #0d0d0f;
+    }
+
+    /* HEADER ACTIONS */
 
     .header-actions {
       display: flex;
@@ -153,10 +358,7 @@
     }
 
     @keyframes ripple-anim {
-      to {
-        transform: translate(-50%, -50%) scale(4);
-        opacity: 0;
-      }
+      to { transform: translate(-50%, -50%) scale(4); opacity: 0; }
     }
 
     /* HAMBURGER */
@@ -282,9 +484,7 @@
     }
     .overlay.show { opacity: 1; pointer-events: auto; }
 
-    /* =========================
-       MAIN CONTENT
-    ========================= */
+    /* MAIN CONTENT */
 
     .main {
       padding-top: var(--header-h);
@@ -317,9 +517,7 @@
       margin-bottom: 28px;
     }
 
-    /* =========================
-       CHARACTER GRID
-    ========================= */
+    /* CHARACTER GRID */
 
     #character-list {
       display: grid;
@@ -399,7 +597,7 @@
     .character-info h3 {
       font-size: 1rem;
       font-weight: 600;
-      margin: 0  0 4px;
+      margin: 0 0 4px;
       color: var(--text);
     }
 
@@ -445,14 +643,10 @@
       aspect-ratio: 1 / 1;
     }
 
-    .skeleton-card .skel-body {
-      padding: 14px 16px;
-    }
+    .skeleton-card .skel-body { padding: 14px 16px; }
 
     .skeleton-card .skel-line {
-      height: 12px;
-      border-radius: 6px;
-      margin-bottom: 8px;
+      height: 12px; border-radius: 6px; margin-bottom: 8px;
     }
 
     .skeleton-card .skel-line.short { width: 60%; }
@@ -499,6 +693,26 @@
       <span>a</span><span>t</span><span>e</span><span>n</span><span>e</span><span>y</span>
     </h1>
 
+    <!-- ACCOUNT -->
+    <div class="account" id="account">
+      <button class="account-btn" id="accountButton" aria-label="アカウント">
+        <svg id="accountAvatar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 21c0-4 4-7 8-7s8 3 8 7"/>
+        </svg>
+      </button>
+
+      <a href="/login/" class="login-pill" id="loginPill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        ログイン
+      </a>
+
+      <!-- DROPDOWN -->
+      <div class="account-menu" id="accountMenu">
+        <!-- 動的に生成 -->
+      </div>
+    </div>
+
     <div class="header-actions">
       <button class="icon-btn darkmode" id="darkmodeButton" aria-label="ダークモード切替">
         <div class="toggle-track">
@@ -532,7 +746,6 @@
       Characters
     </a>
     <a href="/scene/">
-      <!-- 海岸沿い: 太陽＋波 -->
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="6" cy="5.5" r="2.5"/>
         <path d="M2 16c1.2 0 1.2-1.2 2.4-1.2S5.6 16 6.8 16 8 14.8 9.2 14.8 10.4 16 11.6 16s1.2-1.2 2.4-1.2S15.2 16 16.4 16s1.2-1.2 2.4-1.2S20 16 21.2 16"/>
@@ -541,7 +754,6 @@
       Scene
     </a>
     <a href="/rag/">
-      <!-- 本棚: 棚枠＋2段の本 -->
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="1"/>
         <line x1="3" y1="12" x2="21" y2="12"/>
@@ -558,7 +770,6 @@
       RAG
     </a>
     <a href="/pack/">
-      <!-- 段ボール: 六角形の箱＋開き目 -->
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/>
         <path d="M3.3 7.3 12 12l8.7-4.7"/>
@@ -567,7 +778,6 @@
       Pack
     </a>
     <a href="/create/">
-      <!-- 作成: ハンマー -->
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="m15 12-8.373 8.373a1 1 0 1 1-3-3L12 9"/>
         <path d="m18 15 4-4"/>
@@ -611,6 +821,134 @@
 
     menuButton.addEventListener("click", () => toggleMenu());
     overlay.addEventListener("click", () => toggleMenu(false));
+
+    /* =========================
+       AUTH CHECK + ACCOUNT DROPDOWN
+    ========================= */
+    const accountButton = document.getElementById("accountButton");
+    const accountMenu = document.getElementById("accountMenu");
+
+    // --- Auth state ---
+    function getAuthUser() {
+      try {
+        const raw = localStorage.getItem("ateney-user");
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      // Also check for just a token
+      if (localStorage.getItem("ateney-token")) {
+        return { name: "ユーザー", id: "ログイン中" };
+      }
+      return null;
+    }
+
+    const authUser = getAuthUser();
+    const loginPill = document.getElementById("loginPill");
+
+    // --- Hide login pill if logged in ---
+    if (authUser) {
+      loginPill.style.display = "none";
+    }
+
+    // --- Build account menu based on auth state ---
+    function buildAccountMenu() {
+      if (authUser) {
+        // Logged in
+        accountMenu.innerHTML = `
+          <div class="account-menu-header">
+            <div class="avatar-sm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 21c0-4 4-7 8-7s8 3 8 7"/>
+              </svg>
+            </div>
+            <div>
+              <div class="user-name">${authUser.name || "ユーザー"}</div>
+              <div class="user-id">${authUser.id || ""}</div>
+            </div>
+          </div>
+          <a href="/profile/">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+            プロフィール
+          </a>
+          <a href="/notifications/">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            通知
+            <span class="badge">3</span>
+          </a>
+          <a href="/account-settings/">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            アカウント設定
+          </a>
+          <a href="/help/">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            ヘルプ
+          </a>
+          <a href="/logout/" class="logout" id="logoutBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            ログアウト
+          </a>
+        `;
+
+        // Logout handler — clear auth and redirect
+        const logoutBtn = document.getElementById("logoutBtn");
+        if (logoutBtn) {
+          logoutBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            localStorage.removeItem("ateney-user");
+            localStorage.removeItem("ateney-token");
+            window.location.href = "/login/";
+          });
+        }
+      } else {
+        // Not logged in — show login button instead of logout
+        accountMenu.innerHTML = `
+          <div class="account-menu-header">
+            <div class="avatar-sm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M4 21c0-4 4-7 8-7s8 3 8 7"/>
+              </svg>
+            </div>
+            <div>
+              <div class="user-name">ゲスト</div>
+              <div class="user-id">未ログイン</div>
+            </div>
+          </div>
+          <a href="/login/" class="login-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            ログイン
+          </a>
+        `;
+      }
+    }
+
+    buildAccountMenu();
+
+    // --- Dropdown toggle ---
+    function toggleAccount(force) {
+      const open = force !== undefined ? force : !accountMenu.classList.contains("open");
+      accountMenu.classList.toggle("open", open);
+    }
+
+    accountButton.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleAccount();
+    });
+
+    // Close when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!accountMenu.contains(e.target) && e.target !== accountButton) {
+        toggleAccount(false);
+      }
+    });
+
+    // Close on Escape
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        toggleAccount(false);
+        toggleMenu(false);
+      }
+    });
 
     /* =========================
        RIPPLE EFFECT
@@ -785,7 +1123,7 @@
         }
 
         const data = await response.json();
-        const characters = data.characters || data || [];
+        const characters = data.characters || data.scenes || data || [];
 
         if (!Array.isArray(characters) || characters.length === 0) {
           showState("🌙", "まだキャラクターがいません。たぶんメンテ中です");
