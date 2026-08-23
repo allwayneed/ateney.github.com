@@ -92,40 +92,35 @@
       }
 
       if (code && state) {
-        // state検証
-        const savedState = sessionStorage.getItem("line-state");
-        if (state !== savedState) {
+        // どのプロバイダのstateと一致するかで判定
+        let provider = null;
+        if (state === sessionStorage.getItem("line-state")) provider = "line";
+        else if (state === sessionStorage.getItem("google-state")) provider = "google";
+
+        if (!provider) {
           setError("state検証失敗: 不正なコールバックです");
           return;
         }
-        sessionStorage.removeItem("line-state");
+        sessionStorage.removeItem(`${provider}-state`);
 
-        statusEl.textContent = "LINE認証コード受信。トークン交換中...";
+        if (provider === "line") {
+          statusEl.textContent = "LINE認証コード受信。トークン交換中...";
+          const verifier = sessionStorage.getItem("line-verifier");
+          sessionStorage.removeItem("line-verifier");
 
-        const verifier = sessionStorage.getItem("line-verifier");
-        sessionStorage.removeItem("line-verifier");
+          // ⚠️ トークン交換（/oauth2/v2.1/token）はchannel_secretが必要で
+          // 静的サイトでは実行できない。本番ではCloudflare Workerで行う。
+          logLine("LINE code受信: " + code.substring(0, 20) + "...");
+          statusEl.textContent = "LINE認証完了（POC: トークン交換はWorkerで実装）";
+        } else if (provider === "google") {
+          statusEl.textContent = "Google認証コード受信。トークン交換中...";
 
-        // ⚠️ 注意: トークン交換（/oauth2/v2.1/token）はchannel_secretが必要で
-        // 静的サイトでは実行できない。本番ではCloudflare Workerで行う。
-        //
-        // ここではコードを受け取ったことだけ確認する。
-        logLine("LINE code受信: " + code.substring(0, 20) + "...");
+          // ⚠️ こちらもclient_secretが必要なため静的サイトでは完結しない。
+          // 本番ではCloudflare Workerでトークン交換する。
+          logLine("Google code受信: " + code.substring(0, 20) + "...");
+          statusEl.textContent = "Google認証完了（POC: トークン交換はWorkerで実装）";
+        }
 
-        // 本番フロー:
-        // const tokenResponse = await fetch("https://api.line.me/oauth2/v2.1/token", {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        //   body: new URLSearchParams({
-        //     grant_type: "authorization_code",
-        //     code: code,
-        //     redirect_uri: `${redirectBase}/callback.html`,
-        //     client_id: cfg.LINE_CHANNEL_ID,
-        //     client_secret: "【Worker側で設定】",
-        //     code_verifier: verifier,
-        //   }),
-        // });
-
-        statusEl.textContent = "LINE認証完了（POC: トークン交換はWorkerで実装）";
         setTimeout(() => { window.location.href = "/"; }, 2000);
         return;
       }
