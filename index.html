@@ -853,6 +853,8 @@
     function buildAccountMenu() {
       if (authUser) {
         // Logged in
+        // ユーザー名・IDは信頼できない値のため、innerHTMLではなくtextContentで挿入する（XSS対策）。
+        // 静的なメニュー構造のみinnerHTMLで組み立て、動的値は後から個別にセットする。
         accountMenu.innerHTML = `
           <div class="account-menu-header">
             <div class="avatar-sm">
@@ -862,18 +864,17 @@
               </svg>
             </div>
             <div>
-              <div class="user-name">${authUser.name || "ユーザー"}</div>
-              <div class="user-id">${authUser.id || ""}</div>
+              <div class="user-name" id="menuUserName"></div>
+              <div class="user-id" id="menuUserId"></div>
             </div>
           </div>
           <a href="/profile/">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
             プロフィール
           </a>
-          <a href="/notifications/">
+          <a href="/notifications/" id="notificationsLink">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             通知
-            <span class="badge">3</span>
           </a>
           <a href="/account-settings/">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -888,6 +889,14 @@
             ログアウト
           </a>
         `;
+
+        // 動的値はtextContentで安全に挿入（HTMLとして解釈されない）
+        document.getElementById("menuUserName").textContent = authUser.name || "ユーザー";
+        document.getElementById("menuUserId").textContent = authUser.id || "";
+
+        // 通知バッジ: 未実装のため常時「3」を表示していた（ダミー値）。
+        // 実データ連携までは非表示にする。
+        // TODO: 実際の未読通知数をAPIから取得してここに反映する。
 
         // Logout handler — clear auth and redirect
         const logoutBtn = document.getElementById("logoutBtn");

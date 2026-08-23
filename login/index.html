@@ -410,7 +410,15 @@
         let b64url = response.credential.split(".")[1];
         let b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
         while (b64.length % 4) b64 += "=";  // padding
-        const payload = JSON.parse(atob(b64));
+
+        // atobはバイト単位でしか処理できず、日本語などの多バイト文字が
+        // 文字化けする（é‗£é‗のような表示になる）。UTF-8として正しく
+        // デコードするため、バイト列を経由してdecodeURIComponentで変換する。
+        const binary = atob(b64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const jsonStr = new TextDecoder("utf-8").decode(bytes);
+        const payload = JSON.parse(jsonStr);
         log(`email: ${payload.email}`, "info");
         log(`name: ${payload.name}`, "info");
         log(`sub: ${payload.sub}`, "info");
