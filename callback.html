@@ -69,22 +69,32 @@
     const cfg = window.ATENEY_CONFIG || {};
     const redirectBase = cfg.REDIRECT_BASE || window.location.origin;
 
+    /* =========================
+       ログユーティリティ（console両方に出す）
+    ========================= */
+    function logLine(msg) {
+      console.log("[ateney callback]", msg);
+    }
+
     function setError(msg) {
       errorEl.textContent = msg;
       statusEl.textContent = "エラーが発生しました";
+      console.error("[ateney callback]", msg);
     }
 
     /* =========================
-       URLパラメータ解析（GET = LINE, Apple redirect_mode=query）
+       URLパラメータ解析
+       GET = LINE, Google（response_type=code のリダイレクト）
+       Apple は response_mode=form_post のため別途Worker経由が必要
        ========================= */
     async function handleCallback() {
       const params = new URLSearchParams(window.location.search);
-      const hashParams = new URLSearchParams(window.location.hash.replace("#", ""));
 
-      // LINE: ?code=xxx&state=xxx
       const code = params.get("code");
       const state = params.get("state");
       const error = params.get("error");
+
+      console.log("[ateney callback] query params:", Object.fromEntries(params));
 
       if (error) {
         setError(`OAuth error: ${error} - ${params.get("error_description") || ""}`);
@@ -92,7 +102,7 @@
       }
 
       if (code && state) {
-        // どのプロバイダのstateと一致するかで判定
+        // どのプロバイダのstateと一致するかで振り分ける
         let provider = null;
         if (state === sessionStorage.getItem("line-state")) provider = "line";
         else if (state === sessionStorage.getItem("google-state")) provider = "google";
@@ -102,22 +112,55 @@
           return;
         }
         sessionStorage.removeItem(`${provider}-state`);
+        logLine(`provider判定: ${provider}`);
 
         if (provider === "line") {
           statusEl.textContent = "LINE認証コード受信。トークン交換中...";
+
           const verifier = sessionStorage.getItem("line-verifier");
           sessionStorage.removeItem("line-verifier");
 
-          // ⚠️ トークン交換（/oauth2/v2.1/token）はchannel_secretが必要で
+          // ⚠️ 注意: トークン交換（/oauth2/v2.1/token）はchannel_secretが必要で
           // 静的サイトでは実行できない。本番ではCloudflare Workerで行う。
+          //
+          // ここではコードを受け取ったことだけ確認する。
           logLine("LINE code受信: " + code.substring(0, 20) + "...");
+
+          // 本番フロー:
+          // const tokenResponse = await fetch("https://api.line.me/oauth2/v2.1/token", {
+          //   method: "POST",
+          //   headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          //   body: new URLSearchParams({
+          //     grant_type: "authorization_code",
+          //     code: code,
+          //     redirect_uri: `${redirectBase}/callback.html`,
+          //     client_id: cfg.LINE_CHANNEL_ID,
+          //     client_secret: "【Worker側で設定】",
+          //     code_verifier: verifier,
+          //   }),
+          // });
+
           statusEl.textContent = "LINE認証完了（POC: トークン交換はWorkerで実装）";
         } else if (provider === "google") {
           statusEl.textContent = "Google認証コード受信。トークン交換中...";
 
-          // ⚠️ こちらもclient_secretが必要なため静的サイトでは完結しない。
-          // 本番ではCloudflare Workerでトークン交換する。
+          // ⚠️ 注意: トークン交換（/oauth2/v2/token）はclient_secretが必要で
+          // 静的サイトでは実行できない。本番ではCloudflare Workerで行う。
           logLine("Google code受信: " + code.substring(0, 20) + "...");
+
+          // 本番フロー:
+          // const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+          //   method: "POST",
+          //   headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          //   body: new URLSearchParams({
+          //     grant_type: "authorization_code",
+          //     code: code,
+          //     redirect_uri: `${redirectBase}/callback.html`,
+          //     client_id: cfg.GOOGLE_CLIENT_ID,
+          //     client_secret: "【Worker側で設定】",
+          //   }),
+          // });
+
           statusEl.textContent = "Google認証完了（POC: トークン交換はWorkerで実装）";
         }
 
@@ -131,13 +174,7 @@
       // → Appleはform_postのみサポートしているため、
       //   Cloudflare Workerを経由する必要がある。
 
-      // Google: callbackは不要（GISがJWTを直接返す）
-
       setError("不明なコールバックです。ログイン画面からやり直してください。");
-    }
-
-    function logLine(msg) {
-      console.log(msg);
     }
 
     handleCallback().catch(err => setError(err.message));

@@ -7,12 +7,6 @@
 
   <!-- ビルド時に生成される config.js -->
   <script src="/config.js"></script>
-  <!-- Google Identity Services — onload=でロード完了を確実に検知 -->
-  <script>
-    window._gisReady = false;
-    window.onGisLoad = function() { window._gisReady = true; };
-  </script>
-  <script src="https://accounts.google.com/gsi/client?onload=onGisLoad" async defer></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -285,9 +279,9 @@
     </div>
     <p class="subtitle">ateneyはateney、おいしいateney</p>
 
-    <!-- Google: LINE/Appleと統一した自作ボタン（GISの自動レンダリングは
-         ブラウザの既存ログインを検出して「〇〇で続行」と個人名を表示してしまい、
-         デザインを統一できないため使用しない。OAuth2ポップアップ方式に変更。 -->
+    <!-- Google: LINE/Appleと統一した自作ボタン。フルリダイレクト方式
+         （initTokenClientのポップアップ方式は拡張機能/サードパーティCookie
+         制限でブロックされるケースがあったため廃止） -->
     <button class="oauth-btn google" id="google-login">
       <svg viewBox="0 0 24 24">
         <path fill="#4285F4" d="M21.35 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.42z"/>
@@ -362,7 +356,7 @@
     });
 
     /* =========================
-       DEBUG LOGGER
+       DEBUG LOGGER（パネル + console両方に出す）
     ========================= */
     const debugEl = document.getElementById("debug");
     function log(msg, type = "") {
@@ -371,6 +365,12 @@
       div.textContent = msg;
       debugEl.appendChild(div);
       debugEl.scrollTop = debugEl.scrollHeight;
+
+      const prefix = "[ateney]";
+      if (type === "err") console.error(prefix, msg);
+      else if (type === "ok") console.log(`%c${prefix} ${msg}`, "color:#06C755");
+      else if (type === "info") console.info(prefix, msg);
+      else console.log(prefix, msg);
     }
 
     /* =========================
@@ -378,7 +378,7 @@
     ========================= */
     const cfg = window.ATENEY_CONFIG || {};
 
-    log(`config loaded: ${JSON.stringify(cfg, null, 0)}`);
+    log(`config loaded: ${JSON.stringify(cfg, null, 0)}`, "info");
 
     const hasGoogle = cfg.GOOGLE_CLIENT_ID && cfg.GOOGLE_CLIENT_ID !== "";
     const hasLine   = cfg.LINE_CHANNEL_ID && cfg.LINE_CHANNEL_ID !== "";
@@ -391,113 +391,7 @@
     const redirectBase = cfg.REDIRECT_BASE || window.location.origin;
 
     /* =========================
-       GOOGLE OAUTH (OAuth2 Token Client — LINE/Appleと統一した自作ボタン)
-       ---------------------------------------------------------------
-       以前はgoogle.accounts.id.renderButton()でGISの標準ボタンを表示していたが、
-       ブラウザに既存のGoogleログインがあると「〇〇で続行」と個人名が
-       自動表示され、LINE/Appleボタンとデザインが統一できなかった。
-       → OAuth2ポップアップ（initTokenClient）に変更し、ボタンの見た目は
-         完全に自作。ポップアップはGoogle側の画面なので個人名が出ても
-         ボタン自体は常に「Googleでログイン」で統一される。
-    ========================= */
-    const googleLoginBtn = document.getElementById("google-login");
-    let googleTokenClient = null;
-
-    async function handleGoogleToken(tokenResponse) {
-      googleLoginBtn.classList.remove("loading");
-
-      if (tokenResponse.error) {
-        log(`Google OAuth error: ${tokenResponse.error}`, "err");
-        return;
-      }
-
-      log(`Googleアクセストークン受信`, "ok");
-
-      try {
-        const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-        });
-        if (!res.ok) throw new Error(`userinfo取得失敗: ${res.status}`);
-        const profile = await res.json();
-
-        log(`email: ${profile.email}`, "info");
-        log(`name: ${profile.name}`, "info");
-        log(`sub: ${profile.sub}`, "info");
-
-        // localStorageに保存（本番ではバックエンドで検証してから）
-        localStorage.setItem("ateney-user", JSON.stringify({
-          name: profile.name,
-          id: profile.email,
-          provider: "google",
-          sub: profile.sub,
-          token: tokenResponse.access_token,
-        }));
-
-        log("ログイン成功 → / に遷移", "ok");
-        setTimeout(() => { window.location.href = "/"; }, 1000);
-      } catch (e) {
-        log(`Google userinfo error: ${e.message}`, "err");
-      }
-    }
-
-    function initGoogle() {
-      if (!hasGoogle) {
-        log("Google: CLIENT_ID無し", "err");
-        return;
-      }
-
-      if (typeof google === "undefined" || !google.accounts) {
-        log("GIS未ロード（google未定義）", "err");
-        return;
-      }
-
-      if (!google.accounts.oauth2) {
-        log("google.accounts.oauth2が存在しません — GISバージョン不一致?", "err");
-        return;
-      }
-
-      try {
-        googleTokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: cfg.GOOGLE_CLIENT_ID,
-          scope: "openid email profile",
-          callback: handleGoogleToken,
-        });
-
-        log("Google OAuth2初期化完了", "ok");
-      } catch (e) {
-        log(`Google init error: ${e.message}`, "err");
-      }
-    }
-
-    googleLoginBtn.addEventListener("click", () => {
-      if (!hasGoogle) {
-        log("Google: CLIENT_ID未設定", "err");
-        return;
-      }
-      if (!googleTokenClient) {
-        log("Google: 初期化未完了。少し待って再度お試しください", "err");
-        return;
-      }
-      googleLoginBtn.classList.add("loading");
-      googleTokenClient.requestAccessToken();
-    });
-
-    // GISスクリプトのロード完了を待つ（onloadコールバック + ポーリング）
-    let _gisRetries = 0;
-    function waitForGis() {
-      if (window._gisReady) {
-        log("GISロード完了", "ok");
-        initGoogle();
-      } else if (_gisRetries++ < 30) {
-        setTimeout(waitForGis, 200);
-      } else {
-        log("GISロードタイムアウト（6秒）", "err");
-      }
-    }
-    waitForGis();
-
-    /* =========================
-       LINE OAUTH (Authorization Code + PKCE)
+       共通ユーティリティ
     ========================= */
     function generateState() {
       const arr = new Uint8Array(16);
@@ -518,6 +412,45 @@
       return { verifier, challenge };
     }
 
+    /* =========================
+       GOOGLE OAUTH（Authorization Code + フルリダイレクト方式）
+       ---------------------------------------------------------------
+       以前はinitTokenClient()のポップアップ方式だったが、拡張機能/
+       サードパーティCookie制限でブロックされる環境があったため、
+       LINE/Appleと同じフルリダイレクト方式に統一。
+       これによりGISのSDK自体が不要になった。
+    ========================= */
+    document.getElementById("google-login").addEventListener("click", function () {
+      if (!hasGoogle) {
+        log("Google: CLIENT_ID未設定", "err");
+        return;
+      }
+
+      this.classList.add("loading");
+
+      const state = generateState();
+      sessionStorage.setItem("google-state", state);
+
+      const redirectUri = `${redirectBase}/callback.html`;
+      const params = new URLSearchParams({
+        response_type: "code",
+        client_id: cfg.GOOGLE_CLIENT_ID,
+        redirect_uri: redirectUri,
+        state: state,
+        scope: "openid email profile",
+        access_type: "online",
+        prompt: "select_account",
+      });
+
+      log("Google: リダイレクト中...", "info");
+      log(`redirect: ${redirectUri}`, "info");
+
+      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+    });
+
+    /* =========================
+       LINE OAUTH (Authorization Code + PKCE)
+    ========================= */
     document.getElementById("line-login").addEventListener("click", async function() {
       if (!hasLine) {
         log("LINE: CHANNEL_ID未設定", "err");
