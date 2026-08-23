@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f0f0f">
+  <title>ateney</title>
+  <link rel="stylesheet" href="/src/styles.css">
+</head>
+<body>
+  <header class="header" id="header">
+    <div class="header__left">
+      <button class="hamburger" id="hamburger" aria-label="メニュー" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <a href="/" class="logo">ateney</a>
+    </div>
+    <div class="header__right" id="headerRight">
+      <button class="account-icon" id="accountIcon" aria-label="アカウント" style="display:none;">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="side-menu" id="sideMenu" aria-hidden="true">
+    <ul class="side-menu__list">
+      <li><a href="#" id="menuHome">ホーム</a></li>
+      <li><a href="#" id="menuWorks">作品</a></li>
+      <li class="side-menu__sub"><a href="#" id="menuCharacters">└ キャラクター</a></li>
+      <li class="side-menu__sub"><a href="#" id="menuScenes">└ プレース</a></li>
+      <li class="side-menu__sub"><a href="#" id="menuRag">└ RAG</a></li>
+      <li class="side-menu__sub"><a href="#" id="menuPacks">└ Pack</a></li>
+      <li><a href="#" id="menuChat">チャット</a></li>
+      <li><a href="#" id="menuTopics">トピック</a></li>
+      <li><a href="#" id="menuProfile">プロフィール</a></li>
+      <li><a href="#" id="menuFed">⚡ FED</a></li>
+      <li><hr class="side-menu__divider"></li>
+      <li><a href="#" id="menuSettings">設定</a></li>
+    </ul>
+  </nav>
+
+  <div class="overlay" id="overlay"></div>
+
+  <main class="main" id="main-content">
+    <p class="main__loading">読み込み中…</p>
+  </main>
+
+  <section class="login-screen" id="loginScreen" aria-hidden="false">
+    <div class="login-screen__inner">
+      <h1 class="login-screen__logo">ateney</h1>
+      <p class="login-screen__subtitle">ログインして続行</p>
+      <div class="login-screen__buttons">
+        <div id="googleLoginBtn" class="login-btn login-btn--google">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          <span>Google でログイン</span>
+        </div>
+        <button class="login-btn login-btn--line" id="lineLoginBtn">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="#ffffff">
+            <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.344 0 .628.285.628.63v4.771zm-3.194.483c-.282.244-.672.359-1.066.359-.469 0-.93-.183-1.275-.483l-3.099-2.729v2.354c0 .344-.282.629-.631.629-.345 0-.63-.285-.63-.629V8.108c0-.345.282-.63.63-.63.394 0 .729.126.998.394l2.807 2.501V8.108c0-.345.285-.63.631-.63.345 0 .627.285.627.63v4.609c0 .271-.119.51-.394.629zM4.635 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H2.881v1.125h1.754c.349 0 .63.283.63.63 0 .344-.281.629-.63.629H2.25c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.384c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H2.881v1.125h1.754zM12 0C5.373 0 0 4.389 0 9.804c0 5.15 4.404 9.388 10.352 9.801l1.671 3.395c.151.314.479.314.631 0l1.671-3.395C20.371 19.192 24 14.954 24 9.804 24 4.389 18.627 0 12 0z"/>
+          </svg>
+          <span>LINE でログイン</span>
+        </button>
+        <button class="login-btn login-btn--apple" id="appleLoginBtn">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="#ffffff">
+            <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+          </svg>
+          <span>Apple でログイン</span>
+        </button>
+      </div>
+      <p class="login-screen__terms">ログインすると利用規約およびプライバシーポリシーに同意したことになります</p>
+    </div>
+  </section>
+
+  <section class="settings" id="settings" aria-hidden="true">
+    <div class="settings__header">
+      <button class="settings__back" id="settingsBack" aria-label="戻る">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <h1 class="settings__title">設定</h1>
+    </div>
+    <div class="settings__body">
+      <div class="settings__group">
+        <div class="settings__profile">
+          <div class="settings__avatar" id="settingsAvatar">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div class="settings__profile-info">
+            <p class="settings__name" id="settingsName">ユーザー名</p>
+            <p class="settings__email" id="settingsEmail">user@ateney.app</p>
+          </div>
+        </div>
+      </div>
+      <div class="settings__group">
+        <p class="settings__group-label">一般</p>
+        <div class="settings__item">
+          <div class="settings__item-text"><p class="settings__item-title">ダークモード</p><p class="settings__item-desc">画面を暗くする</p></div>
+          <label class="toggle"><input type="checkbox" id="toggleDark" checked><span class="toggle__slider"></span></label>
+        </div>
+        <div class="settings__item">
+          <div class="settings__item-text"><p class="settings__item-title">通知</p><p class="settings__item-desc">プッシュ通知を受け取る</p></div>
+          <label class="toggle"><input type="checkbox" id="toggleNotif"><span class="toggle__slider"></span></label>
+        </div>
+      </div>
+      <div class="settings__group">
+        <p class="settings__group-label">連合学習</p>
+        <div class="settings__item">
+          <div class="settings__item-text"><p class="settings__item-title">分散学習に協力</p><p class="settings__item-desc">ブラウザでAI学習を支援</p></div>
+          <label class="toggle"><input type="checkbox" id="toggleFlConsent"><span class="toggle__slider"></span></label>
+        </div>
+      </div>
+      <div class="settings__group">
+        <p class="settings__group-label">AI設定</p>
+        <div class="settings__item">
+          <div class="settings__item-text"><p class="settings__item-title">サーバープロンプト</p><p class="settings__item-desc">システム既定（読み取り専用）</p></div>
+        </div>
+        <div class="settings__prompt-readonly" id="serverPromptDisplay">サーバー未接続</div>
+      </div>
+      <div class="settings__group">
+        <p class="settings__group-label">アカウント</p>
+        <div class="settings__item settings__item--danger" id="logoutBtn">
+          <div class="settings__item-text"><p class="settings__item-title">ログアウト</p></div>
+        </div>
+        <div class="settings__item settings__item--danger" id="deleteAccountBtn2">
+          <div class="settings__item-text"><p class="settings__item-title">アカウントを削除</p><p class="settings__item-desc">全データが完全に削除されます</p></div>
+        </div>
+      </div>
+      <div class="settings__group">
+        <p class="settings__group-label">について</p>
+        <div class="settings__item"><div class="settings__item-text"><p class="settings__item-title">バージョン</p></div><span class="settings__version">0.3.0</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TensorFlow.js (FEDページ用) -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgpu@4.22.0/dist/tf-backend-webgpu.min.js"></script>
+
+  <script src="/dist/main.js"></script>
+</body>
+</html>

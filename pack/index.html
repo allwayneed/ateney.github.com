@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>ateney</title>
+  <title>ateney — Pack</title>
 
   <style>
     * {
@@ -50,28 +50,21 @@
       transition: background var(--transition), color var(--transition);
     }
 
-    /* =========================
-       VIEW TRANSITIONS
-    ========================= */
+    /* VIEW TRANSITIONS */
 
     ::view-transition-old(root),
     ::view-transition-new(root) {
       animation: none;
       mix-blend-mode: normal;
     }
-
     ::view-transition-old(root) { z-index: 1; }
     ::view-transition-new(root) { z-index: 9999; }
 
-    /* =========================
-       HEADER
-    ========================= */
+    /* HEADER */
 
     .header {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       height: var(--header-h);
       display: flex;
       align-items: center;
@@ -82,8 +75,6 @@
       z-index: 90;
       transition: background var(--transition), border-color var(--transition);
     }
-
-    /* LOGO (letter wave) */
 
     .logo {
       font-size: 1.35rem;
@@ -99,9 +90,7 @@
       transition: transform 0.4s var(--ease-spring), color 0.3s var(--ease);
     }
 
-    .logo:hover span {
-      animation: logo-wave 0.8s var(--ease);
-    }
+    .logo:hover span { animation: logo-wave 0.8s var(--ease); }
 
     @keyframes logo-wave {
       0%, 100% { transform: translateY(0); }
@@ -125,16 +114,10 @@
 
     .icon-btn {
       position: relative;
-      width: 42px;
-      height: 42px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      background: none;
-      cursor: pointer;
-      color: var(--text);
-      border-radius: 50%;
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      border: none; background: none; cursor: pointer;
+      color: var(--text); border-radius: 50%;
       transition: background 0.2s var(--ease), color var(--transition);
       -webkit-tap-highlight-color: transparent;
       overflow: hidden;
@@ -153,10 +136,7 @@
     }
 
     @keyframes ripple-anim {
-      to {
-        transform: translate(-50%, -50%) scale(4);
-        opacity: 0;
-      }
+      to { transform: translate(-50%, -50%) scale(4); opacity: 0; }
     }
 
     /* HAMBURGER */
@@ -164,12 +144,8 @@
     .menu-button .bars { position: relative; width: 22px; height: 16px; }
 
     .menu-button .bars span {
-      display: block;
-      position: absolute;
-      left: 0;
-      width: 100%;
-      height: 2.5px;
-      border-radius: 2px;
+      display: block; position: absolute; left: 0;
+      width: 100%; height: 2.5px; border-radius: 2px;
       background: currentColor;
       transition: transform 0.3s var(--ease), opacity 0.2s var(--ease);
     }
@@ -253,13 +229,12 @@
     }
     .menu.open a { animation: menu-item-in 0.4s var(--ease) forwards; }
     .menu.open a:nth-child(1) { animation-delay: 60ms; }
-    .menu.open a:nth-child(2) { animation-delay: 105ms; }
-    .menu.open a:nth-child(3) { animation-delay: 150ms; }
-    .menu.open a:nth-child(4) { animation-delay: 195ms; }
-    .menu.open a:nth-child(5) { animation-delay: 240ms; }
-    .menu.open a:nth-child(6) { animation-delay: 285ms; }
-    .menu.open a:nth-child(7) { animation-delay: 330ms; }
-    .menu.open a:nth-child(8) { animation-delay: 375ms; }
+    .menu.open a:nth-child(2) { animation-delay: 110ms; }
+    .menu.open a:nth-child(3) { animation-delay: 160ms; }
+    .menu.open a:nth-child(4) { animation-delay: 210ms; }
+    .menu.open a:nth-child(5) { animation-delay: 260ms; }
+    .menu.open a:nth-child(6) { animation-delay: 310ms; }
+    .menu.open a:nth-child(7) { animation-delay: 360ms; }
     @keyframes menu-item-in { to { opacity: 1; transform: translateX(0); } }
 
     .menu a:hover { background: var(--bg-elevated); padding-left: 34px; }
@@ -282,9 +257,7 @@
     }
     .overlay.show { opacity: 1; pointer-events: auto; }
 
-    /* =========================
-       MAIN CONTENT
-    ========================= */
+    /* MAIN CONTENT */
 
     .main {
       padding-top: var(--header-h);
@@ -308,26 +281,19 @@
       font-size: 1.5rem;
       font-weight: 700;
       letter-spacing: -0.02em;
-      margin-bottom: 12px;
-    }
-
-    .main > .main-inner > p {
-      color: var(--text-secondary);
-      font-size: 0.95rem;
       margin-bottom: 28px;
+      text-transform: capitalize;
     }
 
-    /* =========================
-       CHARACTER GRID
-    ========================= */
+    /* PACK GRID */
 
-    #character-list {
+    #pack-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 20px;
     }
 
-    .character-card {
+    .pack-card {
       border: 1px solid var(--border);
       border-radius: 14px;
       overflow: hidden;
@@ -348,19 +314,19 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    .character-card { animation-delay: calc(var(--card-index, 0) * 70ms); }
+    .pack-card { animation-delay: calc(var(--card-index, 0) * 70ms); }
 
-    .character-card:hover {
+    .pack-card:hover {
       transform: translateY(-4px);
       box-shadow: 0 12px 28px var(--shadow);
       border-color: var(--accent);
     }
 
-    .character-card:active {
+    .pack-card:active {
       transform: translateY(-1px) scale(0.99);
     }
 
-    .character-card .card-image {
+    .pack-card .card-image {
       position: relative;
       width: 100%;
       aspect-ratio: 1 / 1;
@@ -368,42 +334,38 @@
       background: var(--border);
     }
 
-    .character-card .card-image img {
-      width: 100%;
-      height: 100%;
+    .pack-card .card-image img {
+      width: 100%; height: 100%;
       object-fit: cover;
       display: block;
       transition: transform 0.4s var(--ease);
     }
 
-    .character-card:hover .card-image img {
+    .pack-card:hover .card-image img {
       transform: scale(1.08);
     }
 
     .card-image-fallback {
       width: 100%; height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       color: var(--text-secondary);
-      font-size: 2.5rem;
-      font-weight: 700;
+      font-size: 2.5rem; font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
 
-    .character-info {
+    .pack-info {
       padding: 14px 16px;
     }
 
-    .character-info h3 {
+    .pack-info h3 {
       font-size: 1rem;
       font-weight: 600;
-      margin: 0  0 4px;
+      margin: 0 0 4px;
       color: var(--text);
     }
 
-    .character-info p {
+    .pack-info p {
       margin: 0;
       font-size: 0.82rem;
       color: var(--text-secondary);
@@ -445,14 +407,10 @@
       aspect-ratio: 1 / 1;
     }
 
-    .skeleton-card .skel-body {
-      padding: 14px 16px;
-    }
+    .skeleton-card .skel-body { padding: 14px 16px; }
 
     .skeleton-card .skel-line {
-      height: 12px;
-      border-radius: 6px;
-      margin-bottom: 8px;
+      height: 12px; border-radius: 6px; margin-bottom: 8px;
     }
 
     .skeleton-card .skel-line.short { width: 60%; }
@@ -588,9 +546,8 @@
   <!-- MAIN CONTENT -->
   <main class="main">
     <div class="main-inner">
-      <h2>Welcome to ateney</h2>
-      <p>まだリリースされて短いですけど。。。</p>
-      <div id="character-list"></div>
+      <h2>Pack</h2>
+      <div id="pack-list"></div>
     </div>
   </main>
 
@@ -691,14 +648,14 @@
     });
 
     /* =========================
-       CHARACTER LIST
+       PACK LIST
     ========================= */
 
-    const API_URL = "https://ateney-api.ateney-ai.workers.dev/api/character";
-    const container = document.getElementById("character-list");
+    const API_URL = "https://ateney-api.ateney-ai.workers.dev/api/pack";
+    const packContainer = document.getElementById("pack-list");
 
     function showSkeletons(count = 4) {
-      container.innerHTML = "";
+      packContainer.innerHTML = "";
       for (let i = 0; i < count; i++) {
         const skel = document.createElement("div");
         skel.className = "skeleton-card";
@@ -709,12 +666,12 @@
             <div class="skel-line short"></div>
           </div>
         `;
-        container.appendChild(skel);
+        packContainer.appendChild(skel);
       }
     }
 
     function showState(emoji, message) {
-      container.innerHTML = `
+      packContainer.innerHTML = `
         <div class="state-msg">
           <span class="state-emoji">${emoji}</span>
           ${message}
@@ -726,25 +683,26 @@
       el.textContent = text || "";
     }
 
-    function createCard(character, index) {
+    function createPackCard(pack, index) {
       const card = document.createElement("div");
-      card.className = "character-card";
+      card.className = "pack-card";
       card.style.setProperty("--card-index", index);
 
+      // Image area
       const imgWrap = document.createElement("div");
       imgWrap.className = "card-image";
 
-      if (character.avatar_url) {
+      if (pack.avatar_url) {
         const img = document.createElement("img");
-        img.alt = character.name || "character";
+        img.alt = pack.name || "pack";
         img.loading = "lazy";
-        img.src = character.avatar_url;
+        img.src = pack.avatar_url;
 
         img.addEventListener("error", () => {
           imgWrap.innerHTML = "";
           const fb = document.createElement("div");
           fb.className = "card-image-fallback";
-          setText(fb, (character.name || "?").charAt(0));
+          setText(fb, (pack.name || "?").charAt(0));
           imgWrap.appendChild(fb);
         });
 
@@ -752,20 +710,21 @@
       } else {
         const fb = document.createElement("div");
         fb.className = "card-image-fallback";
-        setText(fb, (character.name || "?").charAt(0));
+        setText(fb, (pack.name || "?").charAt(0));
         imgWrap.appendChild(fb);
       }
 
+      // Info area
       const info = document.createElement("div");
-      info.className = "character-info";
+      info.className = "pack-info";
 
       const name = document.createElement("h3");
-      setText(name, character.name);
+      setText(name, pack.name);
       info.appendChild(name);
 
-      if (character.description) {
+      if (pack.description) {
         const desc = document.createElement("p");
-        setText(desc, character.description);
+        setText(desc, pack.description);
         info.appendChild(desc);
       }
 
@@ -774,7 +733,7 @@
       return card;
     }
 
-    async function loadCharacters() {
+    async function loadPacks() {
       showSkeletons(4);
 
       try {
@@ -785,25 +744,25 @@
         }
 
         const data = await response.json();
-        const characters = data.characters || data || [];
+        const packs = data.packs || data.scenes || data || [];
 
-        if (!Array.isArray(characters) || characters.length === 0) {
-          showState("🌙", "まだキャラクターがいません。たぶんメンテ中です");
+        if (!Array.isArray(packs) || packs.length === 0) {
+          showState("📦", "まだパックがありません");
           return;
         }
 
-        container.innerHTML = "";
-        characters.forEach((char, i) => {
-          container.appendChild(createCard(char, i));
+        packContainer.innerHTML = "";
+        packs.forEach((pack, i) => {
+          packContainer.appendChild(createPackCard(pack, i));
         });
 
       } catch (err) {
-        console.error("Failed to load characters:", err);
-        showState("⚠️", "キャラクターを読み込めませんでした");
+        console.error("Failed to load packs:", err);
+        showState("⚠️", "パックを読み込めませんでした。たぶんメンテ中です");
       }
     }
 
-    loadCharacters();
+    loadPacks();
   </script>
 </body>
 </html>
