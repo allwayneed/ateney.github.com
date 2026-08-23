@@ -173,16 +173,7 @@
       margin: 0 0 28px; color: var(--text-secondary); font-size: 0.9rem;
     }
 
-    /* Google button container */
-    #google-btn-container {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 10px;
-      min-height: 48px;
-      align-items: center;
-    }
-
-    /* Fallback Google button (if GIS fails to load) */
+    /* 全OAuthボタン共通スタイル（Google/LINE/Apple統一デザイン） */
     .oauth-btn {
       width: 100%; height: 48px;
       display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -290,18 +281,19 @@
     </div>
     <p class="subtitle">ateneyはateney、おいしいateney</p>
 
-    <!-- Google: GISがレンダリングするボタン -->
-    <div id="google-btn-container">
-      <button class="oauth-btn" id="google-fallback" style="display:none">
-        <svg viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M21.35 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.42z"/>
-          <path fill="#34A853" d="M12 21.7c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.29v2.53A9.74 9.74 0 0 0 12 21.7z"/>
-          <path fill="#FBBC05" d="M6.54 13.78A5.86 5.86 0 0 1 6.24 12c0-.62.11-1.22.3-1.78V7.69H3.29A9.74 9.74 0 0 0 2.25 12c0 1.57.38 3.05 1.04 4.31l3.25-2.53z"/>
-          <path fill="#EA4335" d="M12 6.19c1.43 0 2.71.49 3.72 1.46l2.79-2.79C16.84 3.24 14.63 2.3 12 2.3a9.74 9.74 0 0 0-8.71 5.39l3.25 2.53C7.31 7.91 9.46 6.19 12 6.19z"/>
-        </svg>
-        Googleでログイン
-      </button>
-    </div>
+    <!-- Google: LINE/Appleと統一した自作ボタン（GISの自動レンダリングは
+         ブラウザの既存ログインを検出して「〇〇で続行」と個人名を表示してしまい、
+         デザインを統一できないため使用しない。OAuth2ポップアップ方式に変更。 -->
+    <button class="oauth-btn google" id="google-login">
+      <svg viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M21.35 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.42z"/>
+        <path fill="#34A853" d="M12 21.7c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.29v2.53A9.74 9.74 0 0 0 12 21.7z"/>
+        <path fill="#FBBC05" d="M6.54 13.78A5.86 5.86 0 0 1 6.24 12c0-.62.11-1.22.3-1.78V7.69H3.29A9.74 9.74 0 0 0 2.25 12c0 1.57.38 3.05 1.04 4.31l3.25-2.53z"/>
+        <path fill="#EA4335" d="M12 6.19c1.43 0 2.71.49 3.72 1.46l2.79-2.79C16.84 3.24 14.63 2.3 12 2.3a9.74 9.74 0 0 0-8.71 5.39l3.25 2.53C7.31 7.91 9.46 6.19 12 6.19z"/>
+      </svg>
+      <span class="spinner"></span>
+      Googleでログイン
+    </button>
 
     <!-- LINE -->
     <button class="oauth-btn line" id="line-login">
@@ -395,93 +387,91 @@
     const redirectBase = cfg.REDIRECT_BASE || window.location.origin;
 
     /* =========================
-       GOOGLE OAUTH (Google Identity Services)
+       GOOGLE OAUTH (OAuth2 Token Client — LINE/Appleと統一した自作ボタン)
+       ---------------------------------------------------------------
+       以前はgoogle.accounts.id.renderButton()でGISの標準ボタンを表示していたが、
+       ブラウザに既存のGoogleログインがあると「〇〇で続行」と個人名が
+       自動表示され、LINE/Appleボタンとデザインが統一できなかった。
+       → OAuth2ポップアップ（initTokenClient）に変更し、ボタンの見た目は
+         完全に自作。ポップアップはGoogle側の画面なので個人名が出ても
+         ボタン自体は常に「Googleでログイン」で統一される。
     ========================= */
-    const googleFallback = document.getElementById("google-fallback");
-    const googleContainer = document.getElementById("google-btn-container");
+    const googleLoginBtn = document.getElementById("google-login");
+    let googleTokenClient = null;
 
-    function handleGoogleCredential(response) {
-      // response.credential = JWT (ID Token)
-      log(`Google JWT受信: ${response.credential.substring(0, 40)}...`, "ok");
+    async function handleGoogleToken(tokenResponse) {
+      googleLoginBtn.classList.remove("loading");
 
-      // JWTをデコード（署名検証はバックエンドで行う）
+      if (tokenResponse.error) {
+        log(`Google OAuth error: ${tokenResponse.error}`, "err");
+        return;
+      }
+
+      log(`Googleアクセストークン受信`, "ok");
+
       try {
-        // JWTはbase64urlエンコード（- と _ を使用）。atobは標準base64しか処理できない。
-        let b64url = response.credential.split(".")[1];
-        let b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
-        while (b64.length % 4) b64 += "=";  // padding
+        const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+        });
+        if (!res.ok) throw new Error(`userinfo取得失敗: ${res.status}`);
+        const profile = await res.json();
 
-        // atobはバイト単位でしか処理できず、日本語などの多バイト文字が
-        // 文字化けする（é‗£é‗のような表示になる）。UTF-8として正しく
-        // デコードするため、バイト列を経由してdecodeURIComponentで変換する。
-        const binary = atob(b64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        const jsonStr = new TextDecoder("utf-8").decode(bytes);
-        const payload = JSON.parse(jsonStr);
-        log(`email: ${payload.email}`, "info");
-        log(`name: ${payload.name}`, "info");
-        log(`sub: ${payload.sub}`, "info");
+        log(`email: ${profile.email}`, "info");
+        log(`name: ${profile.name}`, "info");
+        log(`sub: ${profile.sub}`, "info");
 
         // localStorageに保存（本番ではバックエンドで検証してから）
         localStorage.setItem("ateney-user", JSON.stringify({
-          name: payload.name,
-          id: payload.email,
+          name: profile.name,
+          id: profile.email,
           provider: "google",
-          sub: payload.sub,
-          token: response.credential,
+          sub: profile.sub,
+          token: tokenResponse.access_token,
         }));
 
         log("ログイン成功 → / に遷移", "ok");
         setTimeout(() => { window.location.href = "/"; }, 1000);
       } catch (e) {
-        log(`JWT decode error: ${e.message}`, "err");
+        log(`Google userinfo error: ${e.message}`, "err");
       }
     }
 
     function initGoogle() {
       if (!hasGoogle) {
-        log("Google: CLIENT_ID無し → fallback表示", "err");
-        googleFallback.style.display = "flex";
+        log("Google: CLIENT_ID無し", "err");
         return;
       }
 
-      if (typeof google === "undefined" || !google.accounts) {
+      if (typeof google === "undefined" || !google.accounts || !google.accounts.oauth2) {
         log("GIS未ロード → 500ms後にリトライ", "err");
         setTimeout(initGoogle, 500);
         return;
       }
 
       try {
-        google.accounts.id.initialize({
+        googleTokenClient = google.accounts.oauth2.initTokenClient({
           client_id: cfg.GOOGLE_CLIENT_ID,
-          callback: handleGoogleCredential,
-          auto_select: false,
-          cancel_on_tap_outside: false,
+          scope: "openid email profile",
+          callback: handleGoogleToken,
         });
 
-        // 標準のGoogleボタンをレンダリング
-        google.accounts.id.renderButton(googleContainer, {
-          type: "standard",
-          shape: "pill",
-          size: "large",
-          text: "continue_with",
-          locale: "ja",
-          width: 360,
-        });
-
-        // One Tapも出す（オプション）
-        google.accounts.id.prompt();
-
-        log("Google GIS初期化完了", "ok");
+        log("Google OAuth2初期化完了", "ok");
       } catch (e) {
         log(`Google init error: ${e.message}`, "err");
-        googleFallback.style.display = "flex";
       }
     }
 
-    googleFallback.addEventListener("click", () => {
-      log("Google fallback clicked — GIS未利用", "err");
+    googleLoginBtn.addEventListener("click", () => {
+      if (!hasGoogle) {
+        log("Google: CLIENT_ID未設定", "err");
+        return;
+      }
+      if (!googleTokenClient) {
+        log("Google: 初期化未完了。少し待って再度お試しください", "err");
+        return;
+      }
+      googleLoginBtn.classList.add("loading");
+      googleTokenClient.requestAccessToken();
     });
 
     // GISスクリプトのロード完了を待つ
