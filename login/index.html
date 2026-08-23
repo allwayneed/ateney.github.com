@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ログイン - ateney</title>
 
+  <!-- ビルド時に生成される config.js -->
+  <script src="config.js"></script>
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
       --bg: #f5f5f7;
@@ -20,7 +21,6 @@
       --border: #d1d1d6;
       --shadow: rgba(0, 0, 0, 0.08);
       --accent: #5b8def;
-
       --ease: cubic-bezier(0.4, 0, 0.2, 1);
       --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
       --transition: 0.35s var(--ease);
@@ -41,19 +41,16 @@
       display: flex;
       align-items: center;
       justify-content: center;
-
       font-family: -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.6;
       overflow-x: hidden;
-
       transition: background var(--transition), color var(--transition);
-
       position: relative;
     }
 
-    /* Floating background blobs */
+    /* Floating blobs */
     .blob {
       position: fixed;
       border-radius: 50%;
@@ -61,90 +58,64 @@
       opacity: 0.15;
       pointer-events: none;
       z-index: 0;
-      transition: background var(--transition);
     }
-
     .blob-1 {
-      width: 320px;
-      height: 320px;
+      width: 320px; height: 320px;
       background: var(--accent);
-      top: -80px;
-      left: -60px;
-      animation: blob-float-1 18s var(--ease) infinite;
+      top: -80px; left: -60px;
+      animation: blob-1 18s var(--ease) infinite;
     }
-
     .blob-2 {
-      width: 260px;
-      height: 260px;
+      width: 260px; height: 260px;
       background: #ff6b9d;
-      bottom: -60px;
-      right: -40px;
-      animation: blob-float-2 22s var(--ease) infinite;
+      bottom: -60px; right: -40px;
+      animation: blob-2 22s var(--ease) infinite;
+    }
+    @keyframes blob-1 {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(40px,30px) scale(1.1); }
+      66% { transform: translate(-20px,50px) scale(0.95); }
+    }
+    @keyframes blob-2 {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(-30px,-40px) scale(1.15); }
+      66% { transform: translate(20px,-20px) scale(0.9); }
     }
 
-    @keyframes blob-float-1 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33%      { transform: translate(40px, 30px) scale(1.1); }
-      66%      { transform: translate(-20px, 50px) scale(0.95); }
-    }
-
-    @keyframes blob-float-2 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      33%      { transform: translate(-30px, -40px) scale(1.15); }
-      66%      { transform: translate(20px, -20px) scale(0.9); }
-    }
-
-    /* Dark mode toggle — top right */
+    /* Dark mode toggle */
     .darkmode {
-      position: fixed;
-      top: 16px;
-      right: 20px;
-      width: 42px;
-      height: 42px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      background: none;
-      cursor: pointer;
-      color: var(--text);
-      border-radius: 50%;
-      z-index: 100;
+      position: fixed; top: 16px; right: 20px;
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      border: none; background: none; cursor: pointer;
+      color: var(--text); border-radius: 50%; z-index: 100;
       -webkit-tap-highlight-color: transparent;
-      transition: background 0.2s var(--ease), color var(--transition);
       overflow: hidden;
+      transition: background 0.2s var(--ease), color var(--transition);
     }
-
     .darkmode:active { background: var(--bg-elevated); }
-
     .darkmode .toggle-track { position: relative; width: 26px; height: 26px; }
-
     .darkmode .sun-core {
       position: absolute; top: 50%; left: 50%;
       width: 12px; height: 12px; border-radius: 50%;
-      background: currentColor; transform: translate(-50%, -50%);
+      background: currentColor; transform: translate(-50%,-50%);
       transition: all 0.4s var(--ease);
     }
-
     .darkmode .moon-cover {
       position: absolute; top: 50%; left: 50%;
       width: 12px; height: 12px; border-radius: 50%;
       background: var(--bg);
-      transform: translate(-50%, -50%) translateX(0);
+      transform: translate(-50%,-50%) translateX(0);
       opacity: 0;
       transition: opacity 0.4s var(--ease), background var(--transition), transform 0.4s var(--ease);
     }
-
     .darkmode .rays {
       position: absolute; top: 50%; left: 50%;
       width: 26px; height: 26px;
-      transform: translate(-50%, -50%);
-      transition: opacity 0.3s var(--ease);
+      transform: translate(-50%,-50%);
       animation: rays-spin 20s linear infinite;
     }
-
-    @keyframes rays-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
-
+    @keyframes rays-spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
     .darkmode .rays span {
       position: absolute; top: 0; left: 50%;
       width: 2px; height: 5px; border-radius: 2px;
@@ -153,19 +124,16 @@
       transform: translateX(-50%) rotate(calc(var(--i) * 45deg));
       transition: height 0.3s var(--ease), opacity 0.3s var(--ease);
     }
-
     .darkmode.active .rays { animation-play-state: paused; }
     .darkmode.active .rays span { height: 0; opacity: 0; }
     .darkmode.active .moon-cover {
       opacity: 1;
-      transform: translate(-50%, -50%) translateX(5px) translateY(-2px);
+      transform: translate(-50%,-50%) translateX(5px) translateY(-2px);
     }
 
     /* Login card */
     .login-card {
-      position: relative;
-      z-index: 1;
-
+      position: relative; z-index: 1;
       width: min(90%, 400px);
       padding: 40px 32px 32px;
       border-radius: 20px;
@@ -173,42 +141,27 @@
       border: 1px solid var(--border);
       box-shadow: 0 12px 48px var(--shadow);
       text-align: center;
-
       opacity: 0;
       transform: translateY(24px) scale(0.96);
       animation: card-enter 0.6s var(--ease-spring) forwards;
-
       transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
     }
+    @keyframes card-enter { to { opacity: 1; transform: translateY(0) scale(1); } }
 
-    @keyframes card-enter {
-      to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    /* Logo with wave */
     .logo {
-      font-size: 2rem;
-      font-weight: 800;
+      font-size: 2rem; font-weight: 800;
       letter-spacing: -0.03em;
-      margin-bottom: 8px;
-      color: var(--text);
-      cursor: default;
+      margin-bottom: 8px; cursor: default;
     }
-
     .logo span {
       display: inline-block;
       transition: transform 0.4s var(--ease-spring);
     }
-
-    .logo:hover span {
-      animation: logo-wave 0.8s var(--ease);
-    }
-
+    .logo:hover span { animation: logo-wave 0.8s var(--ease); }
     @keyframes logo-wave {
-      0%, 100% { transform: translateY(0); }
+      0%,100% { transform: translateY(0); }
       50% { transform: translateY(-6px); }
     }
-
     .logo span:nth-child(1) { animation-delay: 0ms; }
     .logo span:nth-child(2) { animation-delay: 60ms; }
     .logo span:nth-child(3) { animation-delay: 120ms; }
@@ -217,149 +170,97 @@
     .logo span:nth-child(6) { animation-delay: 300ms; }
 
     .subtitle {
-      margin: 0 0 28px;
-      color: var(--text-secondary);
-      font-size: 0.9rem;
+      margin: 0 0 28px; color: var(--text-secondary); font-size: 0.9rem;
     }
 
-    /* OAuth buttons */
-    .oauth-btn {
-      width: 100%;
-      height: 48px;
+    /* Google button container */
+    #google-btn-container {
       display: flex;
-      align-items: center;
       justify-content: center;
-      gap: 10px;
-
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--bg-elevated);
-      color: var(--text);
-
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-
-      transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease),
-                  background 0.2s var(--ease), border-color 0.2s var(--ease);
-
-      -webkit-tap-highlight-color: transparent;
-      position: relative;
-      overflow: hidden;
+      margin-bottom: 10px;
+      min-height: 48px;
+      align-items: center;
     }
 
+    /* Fallback Google button (if GIS fails to load) */
+    .oauth-btn {
+      width: 100%; height: 48px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      border: 1px solid var(--border); border-radius: 12px;
+      background: var(--bg-elevated); color: var(--text);
+      font-size: 0.95rem; font-weight: 600; cursor: pointer;
+      transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+      -webkit-tap-highlight-color: transparent;
+      text-decoration: none;
+    }
     .oauth-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px var(--shadow);
     }
+    .oauth-btn:active { transform: scale(0.98); }
+    .oauth-btn + .oauth-btn { margin-top: 10px; }
+    .oauth-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
 
-    .oauth-btn:active {
-      transform: scale(0.98);
-    }
-
-    .oauth-btn + .oauth-btn {
-      margin-top: 10px;
-    }
-
-    .oauth-btn svg {
-      width: 20px;
-      height: 20px;
-      flex-shrink: 0;
-    }
-
-    /* Google brand colors stay */
-    .oauth-btn.google:hover {
-      border-color: #4285F4;
-    }
-
-    /* LINE */
     .oauth-btn.line {
-      background: #06C755;
-      border-color: #06C755;
-      color: white;
+      background: #06C755; border-color: #06C755; color: white;
     }
+    .oauth-btn.line:hover { box-shadow: 0 6px 20px rgba(6,199,85,0.35); }
 
-    .oauth-btn.line:hover {
-      box-shadow: 0 6px 20px rgba(6, 199, 85, 0.35);
-    }
-
-    /* Apple */
     .oauth-btn.apple {
-      background: #000;
-      border-color: #000;
-      color: #fff;
+      background: #000; border-color: #000; color: #fff;
     }
+    body.dark .oauth-btn.apple { background: #fff; color: #000; }
 
-    body.dark .oauth-btn.apple {
-      background: #fff;
-      border-color: #fff;
-      color: #000;
-    }
-
-    /* Divider */
-    .divider {
-      margin: 24px 0 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      color: var(--text-secondary);
-      font-size: 0.8rem;
-    }
-
-    .divider::before,
-    .divider::after {
-      content: "";
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-      transition: background var(--transition);
-    }
-
-    /* Notice */
-    .notice {
-      font-size: 0.75rem;
-      line-height: 1.6;
-      color: var(--text-secondary);
-      margin-top: 20px;
-    }
-
-    .notice a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    .notice a:hover {
-      text-decoration: underline;
-    }
-
-    /* Loading state on button */
-    .oauth-btn.loading {
-      pointer-events: none;
-      opacity: 0.7;
-    }
-
-    .oauth-btn.loading .spinner {
-      display: inline-block;
-    }
-
+    .oauth-btn.loading { pointer-events: none; opacity: 0.7; }
     .spinner {
       display: none;
-      width: 18px;
-      height: 18px;
-      border: 2px solid currentColor;
-      border-top-color: transparent;
+      width: 18px; height: 18px;
+      border: 2px solid currentColor; border-top-color: transparent;
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
     }
-
+    .oauth-btn.loading .spinner { display: inline-block; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Reduced motion */
+    .divider {
+      margin: 24px 0 16px;
+      display: flex; align-items: center; gap: 12px;
+      color: var(--text-secondary); font-size: 0.8rem;
+    }
+    .divider::before, .divider::after {
+      content: ""; flex: 1; height: 1px; background: var(--border);
+    }
+
+    .notice {
+      font-size: 0.75rem; line-height: 1.6;
+      color: var(--text-secondary); margin-top: 20px;
+    }
+    .notice a { color: var(--accent); text-decoration: none; }
+    .notice a:hover { text-decoration: underline; }
+
+    /* Debug panel (POC用) */
+    .debug {
+      margin-top: 20px;
+      padding: 14px;
+      border-radius: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-align: left;
+      font-family: monospace;
+      line-height: 1.8;
+      max-height: 200px;
+      overflow-y: auto;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .debug .ok { color: #06C755; }
+    .debug .err { color: #ff4757; }
+    .debug .info { color: var(--accent); }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
       }
     }
@@ -367,11 +268,9 @@
 </head>
 <body>
 
-  <!-- Background blobs -->
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
 
-  <!-- Dark mode toggle -->
   <button class="darkmode" id="darkmodeButton" aria-label="ダークモード切替">
     <div class="toggle-track">
       <div class="rays">
@@ -385,24 +284,26 @@
     </div>
   </button>
 
-  <!-- Login card -->
   <main class="login-card">
     <div class="logo" id="logo">
       <span>a</span><span>t</span><span>e</span><span>n</span><span>e</span><span>y</span>
     </div>
     <p class="subtitle">ateneyはateney、おいしいateney</p>
 
-    <button class="oauth-btn google" id="google-login">
-      <svg viewBox="0 0 24 24">
-        <path fill="#4285F4" d="M21.35 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.42z"/>
-        <path fill="#34A853" d="M12 21.7c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.29v2.53A9.74 9.74 0 0 0 12 21.7z"/>
-        <path fill="#FBBC05" d="M6.54 13.78A5.86 5.86 0 0 1 6.24 12c0-.62.11-1.22.3-1.78V7.69H3.29A9.74 9.74 0 0 0 2.25 12c0 1.57.38 3.05 1.04 4.31l3.25-2.53z"/>
-        <path fill="#EA4335" d="M12 6.19c1.43 0 2.71.49 3.72 1.46l2.79-2.79C16.84 3.24 14.63 2.3 12 2.3a9.74 9.74 0 0 0-8.71 5.39l3.25 2.53C7.31 7.91 9.46 6.19 12 6.19z"/>
-      </svg>
-      <span class="spinner"></span>
-      Googleでログイン
-    </button>
+    <!-- Google: GISがレンダリングするボタン -->
+    <div id="google-btn-container">
+      <button class="oauth-btn" id="google-fallback" style="display:none">
+        <svg viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M21.35 12.27c0-.79-.07-1.55-.22-2.27H12v4.3h5.24a4.48 4.48 0 0 1-1.94 2.94v2.45h3.14c1.84-1.69 2.91-4.18 2.91-7.42z"/>
+          <path fill="#34A853" d="M12 21.7c2.63 0 4.84-.87 6.45-2.36l-3.14-2.45c-.87.58-1.98.92-3.31.92-2.54 0-4.69-1.72-5.46-4.03H3.29v2.53A9.74 9.74 0 0 0 12 21.7z"/>
+          <path fill="#FBBC05" d="M6.54 13.78A5.86 5.86 0 0 1 6.24 12c0-.62.11-1.22.3-1.78V7.69H3.29A9.74 9.74 0 0 0 2.25 12c0 1.57.38 3.05 1.04 4.31l3.25-2.53z"/>
+          <path fill="#EA4335" d="M12 6.19c1.43 0 2.71.49 3.72 1.46l2.79-2.79C16.84 3.24 14.63 2.3 12 2.3a9.74 9.74 0 0 0-8.71 5.39l3.25 2.53C7.31 7.91 9.46 6.19 12 6.19z"/>
+        </svg>
+        Googleでログイン
+      </button>
+    </div>
 
+    <!-- LINE -->
     <button class="oauth-btn line" id="line-login">
       <svg viewBox="0 0 24 24" fill="currentColor">
         <path d="M24 10.3c0 5.35-5.4 9.7-12 9.7-1.1 0-2.16-.12-3.16-.35l-3.58 1.84a.47.47 0 0 1-.7-.5l.36-2.78C1.9 16.9 0 13.8 0 10.3 0 4.95 5.4.6 12 .6s12 4.35 12 9.7z"/>
@@ -411,6 +312,7 @@
       LINEでログイン
     </button>
 
+    <!-- Apple -->
     <button class="oauth-btn apple" id="apple-login">
       <svg viewBox="0 0 24 24" fill="currentColor">
         <path d="M17.05 12.04c-.03-3.1 2.53-4.6 2.65-4.67-1.45-2.12-3.7-2.41-4.5-2.44-1.92-.2-3.75 1.13-4.72 1.13-.98 0-2.47-1.1-4.06-1.07-2.09.03-4.02 1.22-5.09 3.1-2.17 3.76-.55 9.32 1.56 12.38 1.04 1.5 2.28 3.19 3.91 3.13 1.57-.06 2.16-1.02 4.06-1.02 1.89 0 2.42 1.02 4.08.99 1.69-.03 2.75-1.53 3.78-3.04 1.19-1.74 1.68-3.42 1.71-3.51-.04-.02-3.28-1.26-3.31-5z"/>
@@ -425,6 +327,11 @@
     <p class="notice">
       ログインすることで、<a href="/terms/">利用規約</a>と<a href="/privacy/">プライバシーポリシー</a>に同意したことになります。
     </p>
+
+    <!-- POC用デバッグパネル -->
+    <div class="debug" id="debug">
+      <div>=== ateney OAuth POC ===</div>
+    </div>
   </main>
 
   <script>
@@ -432,17 +339,14 @@
        DARK MODE
     ========================= */
     const darkmodeButton = document.getElementById("darkmodeButton");
-
     function applyDarkMode(on) {
       document.body.classList.toggle("dark", on);
       darkmodeButton.classList.toggle("active", on);
     }
-
     try {
       const saved = localStorage.getItem("ateney-dark");
       if (saved === "1") applyDarkMode(true);
     } catch (e) {}
-
     darkmodeButton.addEventListener("click", () => {
       const isDark = !document.body.classList.contains("dark");
       applyDarkMode(isDark);
@@ -462,30 +366,211 @@
     });
 
     /* =========================
-       OAUTH BUTTONS
+       DEBUG LOGGER
     ========================= */
-    function handleOAuth(provider, btn) {
-      btn.classList.add("loading");
-
-      // ここに本実装を入れる
-      // window.location.href = `/auth/${provider}`;
-      setTimeout(() => {
-        btn.classList.remove("loading");
-        alert(`ここに${provider}の本実装を入れる`);
-      }, 1200);
+    const debugEl = document.getElementById("debug");
+    function log(msg, type = "") {
+      const div = document.createElement("div");
+      if (type) div.className = type;
+      div.textContent = msg;
+      debugEl.appendChild(div);
+      debugEl.scrollTop = debugEl.scrollHeight;
     }
 
-    document.getElementById("google-login").addEventListener("click", function() {
-      handleOAuth("google", this);
+    /* =========================
+       CONFIG CHECK
+    ========================= */
+    const cfg = window.ATENEY_CONFIG || {};
+
+    log(`config loaded: ${JSON.stringify(cfg, null, 0)}`);
+
+    const hasGoogle = cfg.GOOGLE_CLIENT_ID && cfg.GOOGLE_CLIENT_ID !== "";
+    const hasLine   = cfg.LINE_CHANNEL_ID && cfg.LINE_CHANNEL_ID !== "";
+    const hasApple  = cfg.APPLE_CLIENT_ID && cfg.APPLE_CLIENT_ID !== "";
+
+    if (!hasGoogle) log("⚠ GOOGLE_CLIENT_ID 未設定", "err");
+    if (!hasLine)   log("⚠ LINE_CHANNEL_ID 未設定", "err");
+    if (!hasApple)  log("⚠ APPLE_CLIENT_ID 未設定", "err");
+
+    const redirectBase = cfg.REDIRECT_BASE || window.location.origin;
+
+    /* =========================
+       GOOGLE OAUTH (Google Identity Services)
+    ========================= */
+    const googleFallback = document.getElementById("google-fallback");
+    const googleContainer = document.getElementById("google-btn-container");
+
+    function handleGoogleCredential(response) {
+      // response.credential = JWT (ID Token)
+      log(`Google JWT受信: ${response.credential.substring(0, 40)}...`, "ok");
+
+      // JWTをデコード（署名検証はバックエンドで行う）
+      try {
+        const payload = JSON.parse(
+          atob(response.credential.split(".")[1])
+        );
+        log(`email: ${payload.email}`, "info");
+        log(`name: ${payload.name}`, "info");
+        log(`sub: ${payload.sub}`, "info");
+
+        // localStorageに保存（本番ではバックエンドで検証してから）
+        localStorage.setItem("ateney-user", JSON.stringify({
+          name: payload.name,
+          id: payload.email,
+          provider: "google",
+          sub: payload.sub,
+          token: response.credential,
+        }));
+
+        log("ログイン成功 → / に遷移", "ok");
+        setTimeout(() => { window.location.href = "/"; }, 1000);
+      } catch (e) {
+        log(`JWT decode error: ${e.message}`, "err");
+      }
+    }
+
+    function initGoogle() {
+      if (!hasGoogle) {
+        log("Google: CLIENT_ID無し → fallback表示", "err");
+        googleFallback.style.display = "flex";
+        return;
+      }
+
+      if (typeof google === "undefined" || !google.accounts) {
+        log("GIS未ロード → 500ms後にリトライ", "err");
+        setTimeout(initGoogle, 500);
+        return;
+      }
+
+      try {
+        google.accounts.id.initialize({
+          client_id: cfg.GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredential,
+          auto_select: false,
+          cancel_on_tap_outside: false,
+        });
+
+        // 標準のGoogleボタンをレンダリング
+        google.accounts.id.renderButton(googleContainer, {
+          type: "standard",
+          shape: "pill",
+          size: "large",
+          text: "continue_with",
+          locale: "ja",
+          width: 360,
+        });
+
+        // One Tapも出す（オプション）
+        google.accounts.id.prompt();
+
+        log("Google GIS初期化完了", "ok");
+      } catch (e) {
+        log(`Google init error: ${e.message}`, "err");
+        googleFallback.style.display = "flex";
+      }
+    }
+
+    googleFallback.addEventListener("click", () => {
+      log("Google fallback clicked — GIS未利用", "err");
     });
 
-    document.getElementById("line-login").addEventListener("click", function() {
-      handleOAuth("line", this);
+    // GISスクリプトのロード完了を待つ
+    if (typeof google !== "undefined") {
+      initGoogle();
+    } else {
+      window.addEventListener("load", () => {
+        setTimeout(initGoogle, 300);
+      });
+    }
+
+    /* =========================
+       LINE OAUTH (Authorization Code + PKCE)
+    ========================= */
+    function generateState() {
+      const arr = new Uint8Array(16);
+      crypto.getRandomValues(arr);
+      return Array.from(arr, b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    async function generatePKCE() {
+      const arr = new Uint8Array(32);
+      crypto.getRandomValues(arr);
+      const verifier = Array.from(arr, b => b.toString(16).padStart(2, "0")).join("");
+
+      const encoder = new TextEncoder();
+      const digest = await crypto.subtle.digest("SHA-256", encoder.encode(verifier));
+      const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+        .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+
+      return { verifier, challenge };
+    }
+
+    document.getElementById("line-login").addEventListener("click", async function() {
+      if (!hasLine) {
+        log("LINE: CHANNEL_ID未設定", "err");
+        return;
+      }
+
+      this.classList.add("loading");
+
+      const state = generateState();
+      const { verifier, challenge } = await generatePKCE();
+
+      // PKCE verifierをsessionStorageに保存（コールバックで使う）
+      sessionStorage.setItem("line-verifier", verifier);
+      sessionStorage.setItem("line-state", state);
+
+      const redirectUri = `${redirectBase}/callback.html`;
+      const params = new URLSearchParams({
+        response_type: "code",
+        client_id: cfg.LINE_CHANNEL_ID,
+        redirect_uri: redirectUri,
+        state: state,
+        scope: "profile openid email",
+        code_challenge: challenge,
+        code_challenge_method: "S256",
+      });
+
+      log(`LINE: リダイレクト中...`, "info");
+      log(`redirect: ${redirectUri}`, "info");
+
+      window.location.href = `https://access.line.me/oauth2/v2.1/authorize?${params}`;
     });
 
-    document.getElementById("apple-login").addEventListener("click", function() {
-      handleOAuth("apple", this);
+    /* =========================
+       APPLE OAUTH (Sign in with Apple JS)
+    ========================= */
+    document.getElementById("apple-login").addEventListener("click", async function() {
+      if (!hasApple) {
+        log("Apple: CLIENT_ID未設定", "err");
+        return;
+      }
+
+      this.classList.add("loading");
+
+      const state = generateState();
+      sessionStorage.setItem("apple-state", state);
+
+      const redirectUri = `${redirectBase}/callback.html`;
+
+      // Appleは "Sign in with Apple JS" フレームワークを使うのが正式
+      // ここではリダイレクト方式で試す
+      const params = new URLSearchParams({
+        client_id: cfg.APPLE_CLIENT_ID,
+        redirect_uri: redirectUri,
+        response_type: "code id_token",
+        scope: "name email",
+        response_mode: "form_post",
+        state: state,
+      });
+
+      log(`Apple: リダイレクト中...`, "info");
+      log(`redirect: ${redirectUri}`, "info");
+
+      window.location.href = `https://appleid.apple.com/auth/authorize?${params}`;
     });
+
+    log("=== 初期化完了 ===", "ok");
   </script>
 </body>
 </html>
