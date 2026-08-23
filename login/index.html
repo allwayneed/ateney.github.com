@@ -7,8 +7,12 @@
 
   <!-- ビルド時に生成される config.js -->
   <script src="/config.js"></script>
-  <!-- Google Identity Services -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Google Identity Services — onload=でロード完了を確実に検知 -->
+  <script>
+    window._gisReady = false;
+    window.onGisLoad = function() { window._gisReady = true; };
+  </script>
+  <script src="https://accounts.google.com/gsi/client?onload=onGisLoad" async defer></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -442,9 +446,13 @@
         return;
       }
 
-      if (typeof google === "undefined" || !google.accounts || !google.accounts.oauth2) {
-        log("GIS未ロード → 500ms後にリトライ", "err");
-        setTimeout(initGoogle, 500);
+      if (typeof google === "undefined" || !google.accounts) {
+        log("GIS未ロード（google未定義）", "err");
+        return;
+      }
+
+      if (!google.accounts.oauth2) {
+        log("google.accounts.oauth2が存在しません — GISバージョン不一致?", "err");
         return;
       }
 
@@ -474,14 +482,19 @@
       googleTokenClient.requestAccessToken();
     });
 
-    // GISスクリプトのロード完了を待つ
-    if (typeof google !== "undefined") {
-      initGoogle();
-    } else {
-      window.addEventListener("load", () => {
-        setTimeout(initGoogle, 300);
-      });
+    // GISスクリプトのロード完了を待つ（onloadコールバック + ポーリング）
+    let _gisRetries = 0;
+    function waitForGis() {
+      if (window._gisReady) {
+        log("GISロード完了", "ok");
+        initGoogle();
+      } else if (_gisRetries++ < 30) {
+        setTimeout(waitForGis, 200);
+      } else {
+        log("GISロードタイムアウト（6秒）", "err");
+      }
     }
+    waitForGis();
 
     /* =========================
        LINE OAUTH (Authorization Code + PKCE)
