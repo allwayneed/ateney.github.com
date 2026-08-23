@@ -6,7 +6,7 @@
   <title>ログイン - ateney</title>
 
   <!-- ビルド時に生成される config.js -->
-  <script src="/config.js"></script>
+  <script src="config.js"></script>
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -406,9 +406,11 @@
 
       // JWTをデコード（署名検証はバックエンドで行う）
       try {
-        const payload = JSON.parse(
-          atob(response.credential.split(".")[1])
-        );
+        // JWTはbase64urlエンコード（- と _ を使用）。atobは標準base64しか処理できない。
+        let b64url = response.credential.split(".")[1];
+        let b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
+        while (b64.length % 4) b64 += "=";  // padding
+        const payload = JSON.parse(atob(b64));
         log(`email: ${payload.email}`, "info");
         log(`name: ${payload.name}`, "info");
         log(`sub: ${payload.sub}`, "info");
