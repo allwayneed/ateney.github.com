@@ -7,7 +7,7 @@ window.ATENEY_CONFIG = {
   LINE_CHANNEL_ID:   __LINE_CHANNEL_ID__,
   APPLE_CLIENT_ID:   __APPLE_CLIENT_ID__,
   // Cloudflare Worker のAPIベースURL
-  API_BASE: __API_BASE__,
+  API_BASE: "https://ateney-api.ateney-ai.workers.dev",
   // GitHub PagesのURLに合わせて変更
   REDIRECT_BASE: "https://ateney.github.io",
 };

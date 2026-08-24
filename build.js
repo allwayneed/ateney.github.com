@@ -20,7 +20,6 @@ const envMap = {
   __GOOGLE_CLIENT_ID__: { env: "GOOGLE_CLIENT_ID", name: "GOOGLE_CLIENT_ID" },
   __LINE_CHANNEL_ID__:   { env: "LINE_CHANNEL_ID",   name: "LINE_CHANNEL_ID" },
   __APPLE_CLIENT_ID__:   { env: "APPLE_CLIENT_ID",   name: "APPLE_CLIENT_ID" },
-  __API_BASE__:          { env: "API_BASE",          name: "API_BASE" },
 };
 
 let output = template;
