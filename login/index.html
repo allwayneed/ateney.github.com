@@ -195,6 +195,10 @@
     }
     .oauth-btn.line:hover { box-shadow: 0 6px 20px rgba(6,199,85,0.35); }
 
+    .oauth-btn.yahoo {
+        background: #ff0033; color: white;
+    }
+    .oauth-btn.yahoo:hover { box-shadow: 0 6px 20px rgba(255, 104, 104, 0.35); }
     .oauth-btn.apple {
       background: #000; border-color: #000; color: #fff;
     }
@@ -226,26 +230,6 @@
     }
     .notice a { color: var(--accent); text-decoration: none; }
     .notice a:hover { text-decoration: underline; }
-
-    /* Debug panel (POC用) */
-    .debug {
-      margin-top: 20px;
-      padding: 14px;
-      border-radius: 10px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      text-align: left;
-      font-family: monospace;
-      line-height: 1.8;
-      max-height: 200px;
-      overflow-y: auto;
-      transition: background var(--transition), border-color var(--transition);
-    }
-    .debug .ok { color: #06C755; }
-    .debug .err { color: #ff4757; }
-    .debug .info { color: var(--accent); }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -301,7 +285,18 @@
       <span class="spinner"></span>
       LINEでログイン
     </button>
-
+    <button class="oauth-btn yahoo" id="yahoo-login">
+        <svg width="64" height="36" viewBox="0 0 64 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50.4995 7.52958C49.6069 7.61708 45.9043 8.44711 44.6592 8.71212C43.3267 9.06964 30.5287 19.08 29.7287 21.3926C29.5487 22.1952 29.7287 30.8005 29.7287 30.8005L36.9639 31.2855L36.7089 33.6706C35.6689 33.5981 28.9561 33.6131 24.7485 33.6131C22.6159 33.6131 16.1031 33.8506 13.9055 33.7881L14.1806 31.513C15.5531 31.628 17.6457 31.413 18.9282 31.0705C20.2108 30.7305 21.1283 30.218 21.1283 28.9329V21.4651C20.6833 20.1326 10.0404 6.73205 7.28778 4.59946C6.48775 4.32945 1.24255 3.75943 0 3.49192L0.25501 1.25183H24.541L24.1909 3.31691C23.1259 3.58442 17.9857 3.68193 16.6506 4.03694C20.1183 9.19464 25.6035 15.8349 27.3836 18.415C28.3611 16.9924 37.669 10.4797 37.9315 8.43461C36.5989 8.1696 32.1788 7.53208 31.4687 7.53208L31.0462 5.24699H52.0145L50.4995 7.53208V7.52958Z" fill="#ffffff"/>
+            <path d="M46.9543 33.9231L44.1792 33.1981L46.1243 28.7229L48.8144 29.6904L51.397 30.3755L49.4694 34.7481L46.9518 33.9206L46.9543 33.9231ZM52.5046 26.5353L48.5119 25.3128L54.9372 4.33444L64 7.10955L62.2199 10.0122L52.5046 26.5353Z" fill="#ffffff"/>
+        </svg>
+        <span class="spinner"></span>
+        Yahoo!でログイン
+    </button>
+    <button class="oauth-btn microsoft" id="microsoft-login">
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 21 21"><title>MS-SymbolLockup</title><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+        Microsoftでログイン
+    </button>
     <!-- Apple -->
     <button class="oauth-btn apple" id="apple-login">
       <svg viewBox="0 0 24 24" fill="currentColor">
@@ -309,19 +304,14 @@
         <path d="M14.07 3.59c.86-1.05 1.44-2.5 1.28-3.94-1.24.05-2.74.82-3.63 1.86-.8.92-1.5 2.39-1.31 3.81 1.38.1 2.79-.7 3.66-1.73z"/>
       </svg>
       <span class="spinner"></span>
-      Appleでログイン
+      Appleでログイン(できません、金クレ)
     </button>
 
-    <div class="divider">または</div>
+    <div class="divider">または、、、と思わせるための線</div>
 
     <p class="notice">
       ログインすることで、<a href="/terms/">利用規約</a>と<a href="/privacy/">プライバシーポリシー</a>に同意したことになります。
     </p>
-
-    <!-- POC用デバッグパネル -->
-    <div class="debug" id="debug">
-      <div>=== ateney OAuth POC ===</div>
-    </div>
   </main>
 
   <script>
@@ -360,11 +350,11 @@
     ========================= */
     const debugEl = document.getElementById("debug");
     function log(msg, type = "") {
-      const div = document.createElement("div");
-      if (type) div.className = type;
-      div.textContent = msg;
-      debugEl.appendChild(div);
-      debugEl.scrollTop = debugEl.scrollHeight;
+      // const div = document.createElement("div");
+      // if (type) div.className = type;
+      // div.textContent = msg;
+      // debugEl.appendChild(div);
+      // debugEl.scrollTop = debugEl.scrollHeight;
 
       const prefix = "[ateney]";
       if (type === "err") console.error(prefix, msg);

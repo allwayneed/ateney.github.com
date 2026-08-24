@@ -53,7 +53,6 @@
     <div class="title">認証中...</div>
     <div class="status" id="status">しばらくお待ちください</div>
     <div class="error" id="error"></div>
-    <a href="/login.html" class="back">← ログイン画面に戻る</a>
   </div>
 
   <script>
@@ -174,7 +173,8 @@
       // → Appleはform_postのみサポートしているため、
       //   Cloudflare Workerを経由する必要がある。
 
-      setError("不明なコールバックです。ログイン画面からやり直してください。");
+      setError("不明なコールバック、なんかあると思ったら大間違い！ただ受け取る場所だからな。悪用できないで～");
+      setTimeout(() => { window.location.href = "/"; }, 5000);
     }
 
     handleCallback().catch(err => setError(err.message));
