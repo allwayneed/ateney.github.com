@@ -119,27 +119,55 @@
           const verifier = sessionStorage.getItem("line-verifier");
           sessionStorage.removeItem("line-verifier");
 
-          // ⚠️ 注意: トークン交換（/oauth2/v2.1/token）はchannel_secretが必要で
-          // 静的サイトでは実行できない。本番ではCloudflare Workerで行う。
-          //
-          // ここではコードを受け取ったことだけ確認する。
-          logLine("LINE code受信: " + code.substring(0, 20) + "...");
+          if (!verifier) {
+            setError("PKCE verifierが見つかりません。セッションが切れました。");
+            return;
+          }
 
-          // 本番フロー:
-          // const tokenResponse = await fetch("https://api.line.me/oauth2/v2.1/token", {
-          //   method: "POST",
-          //   headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          //   body: new URLSearchParams({
-          //     grant_type: "authorization_code",
-          //     code: code,
-          //     redirect_uri: `${redirectBase}/callback.html`,
-          //     client_id: cfg.LINE_CHANNEL_ID,
-          //     client_secret: "【Worker側で設定】",
-          //     code_verifier: verifier,
-          //   }),
-          // });
+          const apiBase = cfg.API_BASE || "";
+          if (!apiBase) {
+            setError("API_BASEが未設定です。config.jsを確認してください。");
+            return;
+          }
 
-          statusEl.textContent = "LINE認証完了（POC: トークン交換はWorkerで実装）";
+          const redirectUri = `${redirectBase}/callback.html`;
+
+          try {
+            logLine("LINE code → Workerに送信中...");
+            statusEl.textContent = "サーバーで認証処理中...";
+
+            const res = await fetch(`${apiBase}/login/line`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                code: code,
+                verifier: verifier,
+                redirect_uri: redirectUri,
+              }),
+            });
+
+            if (!res.ok) {
+              const errBody = await res.text();
+              throw new Error(`Worker応答エラー (${res.status}): ${errBody}`);
+            }
+
+            const user = await res.json();
+            logLine(`LINE認証成功: name=${user.name}, id=${user.id}`);
+
+            // localStorageに保存（メインページで使用）
+            localStorage.setItem("ateney-user", JSON.stringify({
+              name: user.name,
+              id: user.id,
+              provider: "line",
+              sub: user.sub || "",
+              token: user.token || "",
+            }));
+
+            statusEl.textContent = "LINE認証完了！リダイレクト中...";
+            setTimeout(() => { window.location.href = "/"; }, 1000);
+          } catch (err) {
+            setError(`LINE認証エラー: ${err.message}`);
+          }
         } else if (provider === "google") {
           statusEl.textContent = "Google認証コード受信。トークン交換中...";
 
