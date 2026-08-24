@@ -82,6 +82,37 @@
     }
 
     /* =========================
+       認証成功後の共通処理
+       Workerから { token, user } が返ってくる
+       token (JWT) → ateney-token として保存（APIのAuthorizationヘッダー用）
+       user        → ateney-user  として保存（UI表示用）
+    ========================= */
+    function saveAuthResult(data, provider) {
+      // JWTは別途保存 — API呼ぶ時に Authorization: Bearer <token> で使う
+      if (data.token) {
+        localStorage.setItem("ateney-token", data.token);
+      }
+
+      // ユーザー情報は表示用
+      const u = data.user || {};
+      localStorage.setItem("ateney-user", JSON.stringify({
+        name: u.name || data.name || "",
+        id: u.id || data.id || "",
+        email: u.email || "",
+        avatar: u.avatar_url || data.avatar || "",
+        username: u.username || "",
+        provider: provider,
+        needs_onboarding: u.needs_onboarding || false,
+      }));
+
+      logLine("認証成功: provider=" + provider + ", name=" + (u.name || data.name) + ", id=" + (u.id || data.id));
+      logLine("JWT保存: " + (data.token ? "OK" : "なし（やばい）"));
+
+      statusEl.textContent = (provider === "line" ? "LINE" : "Google") + "認証完了！リダイレクト中...";
+      setTimeout(function() { window.location.href = "/"; }, 1000);
+    }
+
+    /* =========================
        URLパラメータ解析
        GET = LINE, Google（response_type=code のリダイレクト）
        Apple は response_mode=form_post のため別途Worker経由が必要
@@ -96,7 +127,7 @@
       console.log("[ateney callback] query params:", Object.fromEntries(params));
 
       if (error) {
-        setError(`OAuth error: ${error} - ${params.get("error_description") || ""}`);
+        setError("OAuth error: " + error + " - " + (params.get("error_description") || ""));
         return;
       }
 
@@ -110,8 +141,16 @@
           setError("state検証失敗: 不正なコールバックです");
           return;
         }
-        sessionStorage.removeItem(`${provider}-state`);
-        logLine(`provider判定: ${provider}`);
+        sessionStorage.removeItem(provider + "-state");
+        logLine("provider判定: " + provider);
+
+        const apiBase = cfg.API_BASE || "";
+        if (!apiBase) {
+          setError("API_BASEが未設定です。config.jsを確認してください。");
+          return;
+        }
+
+        const redirectUri = redirectBase + "/callback.html";
 
         if (provider === "line") {
           statusEl.textContent = "LINE認証コード受信。トークン交換中...";
@@ -124,19 +163,11 @@
             return;
           }
 
-          const apiBase = cfg.API_BASE || "";
-          if (!apiBase) {
-            setError("API_BASEが未設定です。config.jsを確認してください。");
-            return;
-          }
-
-          const redirectUri = `${redirectBase}/callback.html`;
-
           try {
             logLine("LINE code → Workerに送信中...");
             statusEl.textContent = "サーバーで認証処理中...";
 
-            const res = await fetch(`${apiBase}/login/line`, {
+            const res = await fetch(apiBase + "/login/line", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -148,50 +179,44 @@
 
             if (!res.ok) {
               const errBody = await res.text();
-              throw new Error(`Worker応答エラー (${res.status}): ${errBody}`);
+              throw new Error("Worker応答エラー (" + res.status + "): " + errBody);
             }
 
-            const user = await res.json();
-            logLine(`LINE認証成功: name=${user.name}, id=${user.id}`);
-
-            // localStorageに保存（メインページで使用）
-            localStorage.setItem("ateney-user", JSON.stringify({
-              name: user.name,
-              id: user.id,
-              provider: "line",
-              sub: user.sub || "",
-              token: user.token || "",
-            }));
-
-            statusEl.textContent = "LINE認証完了！リダイレクト中...";
-            setTimeout(() => { window.location.href = "/"; }, 1000);
+            const data = await res.json();
+            saveAuthResult(data, "line");
           } catch (err) {
-            setError(`LINE認証エラー: ${err.message}`);
+            setError("LINE認証エラー: " + err.message);
           }
         } else if (provider === "google") {
           statusEl.textContent = "Google認証コード受信。トークン交換中...";
-
-          // ⚠️ 注意: トークン交換（/oauth2/v2/token）はclient_secretが必要で
-          // 静的サイトでは実行できない。本番ではCloudflare Workerで行う。
           logLine("Google code受信: " + code.substring(0, 20) + "...");
 
-          // 本番フロー:
-          // const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-          //   method: "POST",
-          //   headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          //   body: new URLSearchParams({
-          //     grant_type: "authorization_code",
-          //     code: code,
-          //     redirect_uri: `${redirectBase}/callback.html`,
-          //     client_id: cfg.GOOGLE_CLIENT_ID,
-          //     client_secret: "【Worker側で設定】",
-          //   }),
-          // });
+          try {
+            logLine("Google code → Workerに送信中...");
+            statusEl.textContent = "サーバーで認証処理中...";
 
-          statusEl.textContent = "Google認証完了（POC: トークン交換はWorkerで実装）";
+            // Workerにcode交換を頼む — client_secretはサーバー側で持ってる
+            const res = await fetch(apiBase + "/login/google", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                code: code,
+                redirect_uri: redirectUri,
+              }),
+            });
+
+            if (!res.ok) {
+              const errBody = await res.text();
+              throw new Error("Worker応答エラー (" + res.status + "): " + errBody);
+            }
+
+            const data = await res.json();
+            saveAuthResult(data, "google");
+          } catch (err) {
+            setError("Google認証エラー: " + err.message);
+          }
         }
 
-        setTimeout(() => { window.location.href = "/"; }, 2000);
         return;
       }
 
@@ -202,10 +227,10 @@
       //   Cloudflare Workerを経由する必要がある。
 
       setError("不明なコールバック、なんかあると思ったら大間違い！ただ受け取る場所だからな。悪用できないで～");
-      setTimeout(() => { window.location.href = "/"; }, 5000);
+      setTimeout(function() { window.location.href = "/"; }, 5000);
     }
 
-    handleCallback().catch(err => setError(err.message));
+    handleCallback().catch(function(err) { setError(err.message); });
   </script>
 </body>
 </html>
