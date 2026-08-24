@@ -673,6 +673,66 @@
       50% { transform: translateY(-6px); }
     }
 
+    /* =========================
+       RESPONSIVE — スマホ対応
+    ========================= */
+
+    /* タブレット以下 (768px) */
+    @media (max-width: 768px) {
+      .header { padding: 0 12px; }
+      .logo { font-size: 1.15rem; }
+      .account { margin-left: 12px; gap: 6px; }
+      .login-pill { font-size: 0.78rem; padding: 6px 10px; }
+      .login-pill svg { width: 14px; height: 14px; }
+      .icon-btn { width: 38px; height: 38px; }
+      .account-btn { width: 34px; height: 34px; }
+      .header-actions { gap: 4px; }
+    }
+
+    /* スマホ (480px) */
+    @media (max-width: 480px) {
+      .header { padding: 0 10px; }
+      .logo { font-size: 1.05rem; }
+      .account { margin-left: 8px; gap: 4px; }
+      .login-pill { font-size: 0.72rem; padding: 5px 8px; gap: 4px; }
+      .login-pill svg { width: 13px; height: 13px; }
+      .icon-btn { width: 36px; height: 36px; }
+      .account-btn { width: 32px; height: 32px; }
+      .header-actions { gap: 2px; }
+      .main-inner { padding: 24px 14px; }
+    }
+
+    /* 極小画面 (360px) — ログインpillをアイコンのみに */
+    @media (max-width: 360px) {
+      .login-pill { padding: 6px; }
+      .login-pill svg { width: 14px; height: 14px; }
+      .login-pill-text { display: none; }
+      .logo { font-size: 0.95rem; }
+    }
+
+    /* カードグリッド */
+    @media (max-width: 768px) {
+      #character-list {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 14px;
+      }
+    }
+    @media (max-width: 480px) {
+      #character-list {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 10px;
+      }
+    }
+    @media (max-width: 360px) {
+      #character-list {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 8px;
+      }
+      .character-info { padding: 10px 12px; }
+      .character-info h3 { font-size: 0.88rem; }
+      .character-info p { font-size: 0.75rem; }
+    }
+
     /* REDUCED MOTION */
 
     @media (prefers-reduced-motion: reduce) {
@@ -704,7 +764,7 @@
 
       <a href="/login/" class="login-pill" id="loginPill">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-        ログイン
+        <span class="login-pill-text">ログイン</span>
       </a>
 
       <!-- DROPDOWN -->
