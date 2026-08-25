@@ -517,15 +517,15 @@
       margin-bottom: 28px;
     }
 
-    /* CHARACTER GRID */
+    /* rag GRID */
 
-    #character-list {
+    #rag-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 20px;
     }
 
-    .character-card {
+    .rag-card {
       border: 1px solid var(--border);
       border-radius: 14px;
       overflow: hidden;
@@ -546,19 +546,19 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    .character-card { animation-delay: calc(var(--card-index, 0) * 70ms); }
+    .rag-card { animation-delay: calc(var(--card-index, 0) * 70ms); }
 
-    .character-card:hover {
+    .rag-card:hover {
       transform: translateY(-4px);
       box-shadow: 0 12px 28px var(--shadow);
       border-color: var(--accent);
     }
 
-    .character-card:active {
+    .rag-card:active {
       transform: translateY(-1px) scale(0.99);
     }
 
-    .character-card .card-image {
+    .rag-card .card-image {
       position: relative;
       width: 100%;
       aspect-ratio: 1 / 1;
@@ -566,7 +566,7 @@
       background: var(--border);
     }
 
-    .character-card .card-image img {
+    .rag-card .card-image img {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -574,7 +574,7 @@
       transition: transform 0.4s var(--ease);
     }
 
-    .character-card:hover .card-image img {
+    .rag-card:hover .card-image img {
       transform: scale(1.08);
     }
 
@@ -590,18 +590,18 @@
       letter-spacing: 0.05em;
     }
 
-    .character-info {
+    .rag-info {
       padding: 14px 16px;
     }
 
-    .character-info h3 {
+    .rag-info h3 {
       font-size: 1rem;
       font-weight: 600;
       margin: 0 0 4px;
       color: var(--text);
     }
 
-    .character-info p {
+    .rag-info p {
       margin: 0;
       font-size: 0.82rem;
       color: var(--text-secondary);
@@ -712,25 +712,25 @@
 
     /* カードグリッド */
     @media (max-width: 768px) {
-      #character-list {
+      #rag-list {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         gap: 14px;
       }
     }
     @media (max-width: 480px) {
-      #character-list {
+      #rag-list {
         grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
         gap: 10px;
       }
     }
     @media (max-width: 360px) {
-      #character-list {
+      #rag-list {
         grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
         gap: 8px;
       }
-      .character-info { padding: 10px 12px; }
-      .character-info h3 { font-size: 0.88rem; }
-      .character-info p { font-size: 0.75rem; }
+      .rag-info { padding: 10px 12px; }
+      .rag-info h3 { font-size: 0.88rem; }
+      .rag-info p { font-size: 0.75rem; }
     }
 
     /* REDUCED MOTION */
@@ -858,8 +858,8 @@
   <!-- MAIN CONTENT -->
   <main class="main">
     <div class="main-inner">
-      <h2>character</h2>
-      <div id="character-list"></div>
+      <h2>rag</h2>
+      <div id="rag-list"></div>
     </div>
   </main>
 
@@ -1097,11 +1097,11 @@
     });
 
     /* =========================
-       CHARACTER LIST
+       rag LIST
     ========================= */
 
-    const API_URL = "https://ateney-api.ateney-ai.workers.dev/api/character";
-    const container = document.getElementById("character-list");
+    const API_URL = "https://ateney-api.ateney-ai.workers.dev/api/rag";
+    const container = document.getElementById("rag-list");
 
     function showSkeletons(count = 4) {
       container.innerHTML = "";
@@ -1132,25 +1132,25 @@
       el.textContent = text || "";
     }
 
-    function createCard(character, index) {
+    function createCard(rag, index) {
       const card = document.createElement("div");
-      card.className = "character-card";
+      card.className = "rag-card";
       card.style.setProperty("--card-index", index);
 
       const imgWrap = document.createElement("div");
       imgWrap.className = "card-image";
 
-      if (character.avatar_url) {
+      if (rag.avatar_url) {
         const img = document.createElement("img");
-        img.alt = character.name || "character";
+        img.alt = rag.name || "rag";
         img.loading = "lazy";
-        img.src = character.avatar_url;
+        img.src = rag.avatar_url;
 
         img.addEventListener("error", () => {
           imgWrap.innerHTML = "";
           const fb = document.createElement("div");
           fb.className = "card-image-fallback";
-          setText(fb, (character.name || "?").charAt(0));
+          setText(fb, (rag.name || "?").charAt(0));
           imgWrap.appendChild(fb);
         });
 
@@ -1158,20 +1158,20 @@
       } else {
         const fb = document.createElement("div");
         fb.className = "card-image-fallback";
-        setText(fb, (character.name || "?").charAt(0));
+        setText(fb, (rag.name || "?").charAt(0));
         imgWrap.appendChild(fb);
       }
 
       const info = document.createElement("div");
-      info.className = "character-info";
+      info.className = "rag-info";
 
       const name = document.createElement("h3");
-      setText(name, character.name);
+      setText(name, rag.name);
       info.appendChild(name);
 
-      if (character.description) {
+      if (rag.description) {
         const desc = document.createElement("p");
-        setText(desc, character.description);
+        setText(desc, rag.description);
         info.appendChild(desc);
       }
 
@@ -1180,7 +1180,7 @@
       return card;
     }
 
-    async function loadCharacters() {
+    async function loadrags() {
       showSkeletons(4);
 
       try {
@@ -1191,25 +1191,25 @@
         }
 
         const data = await response.json();
-        const characters = data.characters || data.scenes || data || [];
+        const rags = data.rags || data.scenes || data || [];
 
-        if (!Array.isArray(characters) || characters.length === 0) {
-          showState("🌙", "まだキャラクターがいません。たぶんメンテ中です");
+        if (!Array.isArray(rags) || rags.length === 0) {
+          showState("🌙", "まだRAGがありません。たぶんメンテ中です");
           return;
         }
 
         container.innerHTML = "";
-        characters.forEach((char, i) => {
+        rags.forEach((char, i) => {
           container.appendChild(createCard(char, i));
         });
 
       } catch (err) {
-        console.error("Failed to load characters:", err);
-        showState("⚠️", "キャラクターを読み込めませんでした");
+        console.error("Failed to load rags:", err);
+        showState("⚠️", "RAGを読み込めませんでした");
       }
     }
 
-    loadCharacters();
+    loadrags();
   </script>
 </body>
 </html>
