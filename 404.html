@@ -235,7 +235,7 @@
 
   <!-- HEADER -->
   <header class="header">
-    <h1 class="logo"><a href="/">ateney</a></h1>
+    <h1 class="logo" id="logo"><a href="/">ateney</a></h1>
 
     <div class="account" id="account">
       <a href="/login/" class="login-pill" id="loginPill">
@@ -280,7 +280,7 @@
     <div class="main-inner" id="content">
       <div class="loading-state">
         <div class="loading-spinner"></div>
-        <p id="loading-text">読み込み中...</p>
+        <p id="loading-text">キャラクターを呼んでいます...</p>
       </div>
     </div>
   </main>
@@ -329,6 +329,58 @@
     }
 
     /* =========================
+       LOGO EASTER EGG
+       ロゴを5回連打で隠しメッセージ
+    ========================= */
+    var logoClickCount = 0;
+    var logo = document.getElementById("logo");
+    if (logo) {
+      logo.addEventListener("click", function() {
+        logoClickCount++;
+        if (logoClickCount >= 5) {
+          var msgs = [
+            "そこ。何もないよ。",
+            "さらに5回叩くと…何も起きない。ごめん。",
+            "ロゴを叩く元気があるなら開発も進むはず。",
+          ];
+          var m = msgs[Math.floor(Math.random() * msgs.length)];
+          // 一瞬メッセージ表示
+          var orig = logo.innerHTML;
+          logo.innerHTML = '<span style="font-size:0.7rem;color:var(--accent)">' + m + '</span>';
+          setTimeout(function() { logo.innerHTML = orig; logoClickCount = 0; }, 2500);
+        }
+      });
+    }
+
+    /* =========================
+       LOADING MESSAGE ROTATION
+       ローディング中にメッセージが変わる
+    ========================= */
+    var loadingMsgs = [
+      "キャラクターを呼んでいます...",
+      "まだ呼んでいます...",
+      "怒ってます。寝てたから。",
+      "起きてきました。支度中です。",
+      "もうちょっと。髪直してます。",
+    ];
+    var loadingIdx = 0;
+    var loadingInterval = null;
+    function startLoadingRotation() {
+      var el = document.getElementById("loading-text");
+      if (!el) return;
+      loadingIdx = 0;
+      loadingInterval = setInterval(function() {
+        loadingIdx++;
+        if (loadingIdx < loadingMsgs.length) {
+          el.textContent = loadingMsgs[loadingIdx];
+        }
+      }, 1500);
+    }
+    function stopLoadingRotation() {
+      if (loadingInterval) { clearInterval(loadingInterval); loadingInterval = null; }
+    }
+
+    /* =========================
        SPA ROUTER — 404.html ハック
        GitHub Pagesはファイルがないパスに404.htmlを返す。
        これを利用して /character/:uuid/ をルーティングする。
@@ -343,12 +395,23 @@
 
     function setText(el, text) { if (el) el.textContent = text || ""; }
 
+    var notFoundMessages = [
+      { h: "404", p: "ここにページはなかった。妖精が持っていったのかも。" },
+      { h: "404", p: "リンク切れ。でも心は切れてない。" },
+      { h: "404", p: "ページが迷子になっています。もう少し待つかも？" },
+      { h: "404", p: "このURL、行き止まり。でも冒険は終わらない。" },
+      { h: "404", p: "ページが存在しない。量子力学的に曖昧な場所にいる。" },
+      { h: "404", p: "何も見つからない。静寂。風が吹いている。" },
+      { h: "404", p: "404 — 「存在しない」の4文字。" },
+    ];
+
     function showNotFound() {
       document.title = "404 - ateney";
+      var msg = notFoundMessages[Math.floor(Math.random() * notFoundMessages.length)];
       content.innerHTML =
         '<div class="not-found">' +
-        '<h1>404</h1>' +
-        '<p>ページが見つかりません。URL間違ってない？</p>' +
+        '<h1>' + msg.h + '</h1>' +
+        '<p>' + msg.p + '</p>' +
         '<p style="margin-top:20px"><a href="/">ホームに戻る</a></p>' +
         '</div>';
     }
@@ -422,10 +485,12 @@
     }
 
     async function loadCharacter(uuid) {
+      startLoadingRotation();
       try {
         var res = await fetch(apiBase + "/api/character/" + uuid);
 
         if (res.status === 404) {
+          stopLoadingRotation();
           showNotFound();
           return;
         }
@@ -434,10 +499,12 @@
         }
 
         var data = await res.json();
+        stopLoadingRotation();
         var c = data.character || data;
         renderCharacter(c);
       } catch (e) {
         console.error("[ateney] Failed to load character:", e);
+        stopLoadingRotation();
         showError("キャラクターを読み込めませんでした: " + e.message);
       }
     }
