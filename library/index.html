@@ -517,15 +517,15 @@
       margin-bottom: 28px;
     }
 
-    /* scene GRID */
+    /* library GRID */
 
-    #scene-list {
+    #library-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 20px;
     }
 
-    .scene-card {
+    .library-card {
       border: 1px solid var(--border);
       border-radius: 14px;
       overflow: hidden;
@@ -546,19 +546,19 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    .scene-card { animation-delay: calc(var(--card-index, 0) * 70ms); }
+    .library-card { animation-delay: calc(var(--card-index, 0) * 70ms); }
 
-    .scene-card:hover {
+    .library-card:hover {
       transform: translateY(-4px);
       box-shadow: 0 12px 28px var(--shadow);
       border-color: var(--accent);
     }
 
-    .scene-card:active {
+    .library-card:active {
       transform: translateY(-1px) scale(0.99);
     }
 
-    .scene-card .card-image {
+    .library-card .card-image {
       position: relative;
       width: 100%;
       aspect-ratio: 1 / 1;
@@ -566,7 +566,7 @@
       background: var(--border);
     }
 
-    .scene-card .card-image img {
+    .library-card .card-image img {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -574,7 +574,7 @@
       transition: transform 0.4s var(--ease);
     }
 
-    .scene-card:hover .card-image img {
+    .library-card:hover .card-image img {
       transform: scale(1.08);
     }
 
@@ -590,18 +590,18 @@
       letter-spacing: 0.05em;
     }
 
-    .scene-info {
+    .library-info {
       padding: 14px 16px;
     }
 
-    .scene-info h3 {
+    .library-info h3 {
       font-size: 1rem;
       font-weight: 600;
       margin: 0 0 4px;
       color: var(--text);
     }
 
-    .scene-info p {
+    .library-info p {
       margin: 0;
       font-size: 0.82rem;
       color: var(--text-secondary);
@@ -712,25 +712,25 @@
 
     /* カードグリッド */
     @media (max-width: 768px) {
-      #scene-list {
+      #library-list {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         gap: 14px;
       }
     }
     @media (max-width: 480px) {
-      #scene-list {
+      #library-list {
         grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
         gap: 10px;
       }
     }
     @media (max-width: 360px) {
-      #scene-list {
+      #library-list {
         grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
         gap: 8px;
       }
-      .scene-info { padding: 10px 12px; }
-      .scene-info h3 { font-size: 0.88rem; }
-      .scene-info p { font-size: 0.75rem; }
+      .library-info { padding: 10px 12px; }
+      .library-info h3 { font-size: 0.88rem; }
+      .library-info p { font-size: 0.75rem; }
     }
 
     /* REDUCED MOTION */
@@ -829,13 +829,13 @@
       </svg>
       RAG
     </a>
-    <a href="/pack/">
+    <a href="/library/">
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/>
         <path d="M3.3 7.3 12 12l8.7-4.7"/>
         <path d="M12 22V12"/>
       </svg>
-      Pack
+      Library
     </a>
     <a href="/create/">
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -853,17 +853,13 @@
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Settings
     </a>
-    <a href="/library/">
-      <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      Library
-    </a>
   </nav>
 
   <!-- MAIN CONTENT -->
   <main class="main">
     <div class="main-inner">
-      <h2>scene</h2>
-      <div id="scene-list"></div>
+      <h2>library</h2>
+      <div id="library-list"></div>
     </div>
   </main>
 
@@ -1101,11 +1097,12 @@
     });
 
     /* =========================
-       scene LIST
+       library LIST
     ========================= */
 
-    const API_URL = "https://ateney-api.ateney-ai.workers.dev/api/scene";
-    const container = document.getElementById("scene-list");
+    // TODO: Library用APIエンドポイントができたらここに設定
+    // const API_URL = ".../api/library";
+    const container = document.getElementById("library-list");
 
     function showSkeletons(count = 4) {
       container.innerHTML = "";
@@ -1136,25 +1133,25 @@
       el.textContent = text || "";
     }
 
-    function createCard(scene, index) {
+    function createCard(library, index) {
       const card = document.createElement("div");
-      card.className = "scene-card";
+      card.className = "library-card";
       card.style.setProperty("--card-index", index);
 
       const imgWrap = document.createElement("div");
       imgWrap.className = "card-image";
 
-      if (scene.avatar_url) {
+      if (library.avatar_url) {
         const img = document.createElement("img");
-        img.alt = scene.name || "scene";
+        img.alt = library.name || "library";
         img.loading = "lazy";
-        img.src = scene.avatar_url;
+        img.src = library.avatar_url;
 
         img.addEventListener("error", () => {
           imgWrap.innerHTML = "";
           const fb = document.createElement("div");
           fb.className = "card-image-fallback";
-          setText(fb, (scene.name || "?").charAt(0));
+          setText(fb, (library.name || "?").charAt(0));
           imgWrap.appendChild(fb);
         });
 
@@ -1162,20 +1159,20 @@
       } else {
         const fb = document.createElement("div");
         fb.className = "card-image-fallback";
-        setText(fb, (scene.name || "?").charAt(0));
+        setText(fb, (library.name || "?").charAt(0));
         imgWrap.appendChild(fb);
       }
 
       const info = document.createElement("div");
-      info.className = "scene-info";
+      info.className = "library-info";
 
       const name = document.createElement("h3");
-      setText(name, scene.name);
+      setText(name, library.name);
       info.appendChild(name);
 
-      if (scene.description) {
+      if (library.description) {
         const desc = document.createElement("p");
-        setText(desc, scene.description);
+        setText(desc, library.description);
         info.appendChild(desc);
       }
 
@@ -1184,7 +1181,7 @@
       return card;
     }
 
-    async function loadscenes() {
+    async function loadlibrarys() {
       showSkeletons(4);
 
       try {
@@ -1195,25 +1192,25 @@
         }
 
         const data = await response.json();
-        const scenes = data.scenes || data.scenes || data || [];
+        const librarys = data.librarys || data.scenes || data || [];
 
-        if (!Array.isArray(scenes) || scenes.length === 0) {
-          showState("🌙", "まだシーンがありません。たぶんメンテ中です");
+        if (!Array.isArray(librarys) || librarys.length === 0) {
+          showState("🌙", "まだパックがありません。たぶんメンテ中です");
           return;
         }
 
         container.innerHTML = "";
-        scenes.forEach((char, i) => {
+        librarys.forEach((char, i) => {
           container.appendChild(createCard(char, i));
         });
 
       } catch (err) {
-        console.error("Failed to load scenes:", err);
-        showState("⚠️", "シーンを読み込めませんでした");
+        console.error("Failed to load librarys:", err);
+        showState("⚠️", "パックを読み込めませんでした");
       }
     }
 
-    loadscenes();
+    loadlibrarys();
   </script>
 </body>
 </html>
