@@ -330,25 +330,23 @@
 
     /* =========================
        LOGO EASTER EGG
-       ロゴを5回連打で隠しメッセージ
+       ロゴをダブルクリックで隠しメッセージ
     ========================= */
-    var logoClickCount = 0;
     var logo = document.getElementById("logo");
     if (logo) {
-      logo.addEventListener("click", function() {
-        logoClickCount++;
-        if (logoClickCount >= 5) {
-          var msgs = [
-            "そこ。何もないよ。",
-            "さらに5回叩くと…何も起きない。ごめん。",
-            "ロゴを叩く元気があるなら開発も進むはず。",
-          ];
-          var m = msgs[Math.floor(Math.random() * msgs.length)];
-          // 一瞬メッセージ表示
-          var orig = logo.innerHTML;
-          logo.innerHTML = '<span style="font-size:0.7rem;color:var(--accent)">' + m + '</span>';
-          setTimeout(function() { logo.innerHTML = orig; logoClickCount = 0; }, 2500);
-        }
+      logo.addEventListener("dblclick", function(e) {
+        e.preventDefault();
+        var msgs = [
+          "そこ。何もないよ。",
+          "ダブルクリックする元気があるなら開発も進むはず。",
+          "叩かないで。痛い。",
+          "君、Troble好きでしょ。",
+          "ここに何もないって言ったけど、実は何かあったら面白かったのにね。",
+        ];
+        var m = msgs[Math.floor(Math.random() * msgs.length)];
+        var orig = logo.innerHTML;
+        logo.innerHTML = '<span style="font-size:0.7rem;color:var(--accent)">' + m + '</span>';
+        setTimeout(function() { logo.innerHTML = orig; }, 2500);
       });
     }
 
