@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ateney</title>
+  <script src="/config.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg-elevated: #f5f5f7;
+      --text: #1a1a1a;
+      --text-secondary: #6e6e73;
+      --border: #d1d1d6;
+      --shadow: rgba(0, 0, 0, 0.08);
+      --accent: #5b8def;
+      --header-h: 60px;
+      --menu-w: 280px;
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --transition: 0.35s var(--ease);
+    }
+
+    body.dark {
+      --bg: #0d0d0f;
+      --bg-elevated: #1c1c1e;
+      --text: #f5f5f7;
+      --text-secondary: #98989d;
+      --border: #38383a;
+      --shadow: rgba(0, 0, 0, 0.4);
+      --accent: #7c9fff;
+    }
+
+    body {
+      font-family: -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    /* HEADER */
+    .header {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--header-h);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .logo {
+      font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; cursor: pointer;
+    }
+    .logo a { color: inherit; text-decoration: none; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .icon-btn {
+      width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+      border: none; background: none; cursor: pointer; color: var(--text);
+      border-radius: 50%; -webkit-tap-highlight-color: transparent;
+      transition: background 0.2s var(--ease);
+    }
+    .icon-btn:active { background: var(--bg-elevated); }
+    .darkmode .toggle-track { position: relative; width: 26px; height: 26px; }
+    .darkmode .sun-core {
+      position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; border-radius: 50%;
+      background: currentColor; transform: translate(-50%,-50%); transition: all 0.4s var(--ease);
+    }
+    .darkmode .moon-cover {
+      position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; border-radius: 50%;
+      background: var(--bg); transform: translate(-50%,-50%) translateX(0);
+      opacity: 0; transition: opacity 0.4s var(--ease), background var(--transition), transform 0.4s var(--ease);
+    }
+    .darkmode .rays {
+      position: absolute; top: 50%; left: 50%; width: 26px; height: 26px;
+      transform: translate(-50%,-50%); animation: rays-spin 20s linear infinite;
+    }
+    @keyframes rays-spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+    .darkmode .rays span {
+      position: absolute; top: 0; left: 50%; width: 2px; height: 5px; border-radius: 2px;
+      background: currentColor; transform-origin: 50% 13px;
+      transform: translateX(-50%) rotate(calc(var(--i) * 45deg));
+      transition: height 0.3s var(--ease), opacity 0.3s var(--ease);
+    }
+    .darkmode.active .rays { animation-play-state: paused; }
+    .darkmode.active .rays span { height: 0; opacity: 0; }
+    .darkmode.active .moon-cover { opacity: 1; transform: translate(-50%,-50%) translateX(5px) translateY(-2px); }
+
+    .menu-button .bars { display: flex; flex-direction: column; gap: 4px; }
+    .menu-button .bars span {
+      width: 20px; height: 2px; background: currentColor; border-radius: 1px;
+      transition: transform 0.3s var(--ease), opacity 0.2s var(--ease);
+    }
+    .menu-button.open .bars span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    .menu-button.open .bars span:nth-child(2) { opacity: 0; }
+    .menu-button.open .bars span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+    /* SLIDE MENU */
+    .overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.3); z-index: 90;
+      opacity: 0; pointer-events: none; transition: opacity var(--transition);
+    }
+    .overlay.show { opacity: 1; pointer-events: auto; }
+    .menu {
+      position: fixed; top: 0; right: 0; height: 100%; width: var(--menu-w);
+      background: var(--bg); border-left: 1px solid var(--border);
+      transform: translateX(100%); transition: transform var(--transition);
+      z-index: 95; padding: calc(var(--header-h) + 16px) 0 0;
+      overflow-y: auto;
+    }
+    .menu.open { transform: translateX(0); }
+    .menu a {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 24px; color: var(--text); text-decoration: none;
+      font-size: 0.95rem; font-weight: 500;
+      transition: background 0.2s var(--ease);
+    }
+    .menu a:hover { background: var(--bg-elevated); }
+    .menu-icon { width: 20px; height: 20px; flex-shrink: 0; }
+
+    /* ACCOUNT */
+    .account { position: relative; display: flex; align-items: center; gap: 8px; }
+    .account-btn {
+      width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 50%; background: var(--bg-elevated);
+      cursor: pointer; overflow: hidden; transition: border-color var(--transition);
+    }
+    .account-btn img { width: 100%; height: 100%; object-fit: cover; }
+    .login-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px;
+      color: var(--text); text-decoration: none; font-size: 0.82rem; font-weight: 500;
+      transition: background 0.2s var(--ease), border-color var(--transition);
+    }
+    .login-pill:hover { background: var(--bg-elevated); }
+    .login-pill svg { width: 16px; height: 16px; }
+    .account-menu {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      min-width: 200px; background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 12px; box-shadow: 0 8px 32px var(--shadow);
+      padding: 8px; opacity: 0; pointer-events: none;
+      transform: translateY(-8px); transition: all 0.2s var(--ease);
+    }
+    .account-menu.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .account-menu-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border-radius: 8px; color: var(--text); text-decoration: none;
+      font-size: 0.85rem; cursor: pointer; transition: background 0.15s var(--ease);
+    }
+    .account-menu-item:hover { background: var(--bg); }
+    .account-menu-item.danger { color: #ff4757; }
+    body.dark .account-menu-item.danger { color: #ff6b7a; }
+    .account-menu-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+    /* MAIN */
+    .main { padding-top: calc(var(--header-h) + 24px); min-height: 100vh; }
+    .main-inner { max-width: 720px; margin: 0 auto; padding: 0 20px 60px; }
+
+    /* CHARACTER DETAIL */
+    .char-detail { animation: fade-in 0.4s var(--ease) forwards; }
+    @keyframes fade-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    .char-back {
+      display: inline-flex; align-items: center; gap: 6px; margin-bottom: 24px;
+      color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: 500;
+    }
+    .char-back:hover { text-decoration: underline; }
+
+    .char-header { display: flex; gap: 24px; align-items: flex-start; margin-bottom: 32px; }
+
+    .char-avatar {
+      width: 120px; height: 120px; border-radius: 20px; flex-shrink: 0;
+      overflow: hidden; background: var(--bg-elevated);
+      border: 1px solid var(--border);
+    }
+    .char-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .char-avatar-fallback {
+      width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+      font-size: 3rem; font-weight: 700; color: var(--text-secondary);
+    }
+
+    .char-title { flex: 1; min-width: 0; }
+    .char-title h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+    .char-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .char-tag {
+      padding: 4px 10px; border-radius: 12px; background: var(--bg-elevated);
+      color: var(--text-secondary); font-size: 0.75rem; font-weight: 500;
+    }
+
+    .char-section { margin-bottom: 28px; }
+    .char-section h2 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; color: var(--text-secondary); }
+    .char-section p { font-size: 0.95rem; line-height: 1.8; }
+
+    .char-chat-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 28px; border: none; border-radius: 12px;
+      background: var(--accent); color: white; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .char-chat-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(91,141,239,0.35); }
+    .char-chat-btn:disabled { opacity: 0.5; pointer-events: none; }
+
+    /* LOADING / ERROR */
+    .loading-state, .error-state, .not-found {
+      text-align: center; padding: 80px 20px;
+    }
+    .loading-spinner {
+      width: 40px; height: 40px; margin: 0 auto 20px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-state p, .error-state p, .not-found p {
+      color: var(--text-secondary); font-size: 0.95rem;
+    }
+    .not-found h1 { font-size: 3rem; font-weight: 800; margin-bottom: 12px; }
+    .not-found a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    .not-found a:hover { text-decoration: underline; }
+
+    @media (max-width: 480px) {
+      .char-header { flex-direction: column; align-items: center; text-align: center; }
+      .char-avatar { width: 100px; height: 100px; }
+      .char-title h1 { font-size: 1.4rem; }
+      .login-pill .login-pill-text { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <h1 class="logo"><a href="/">ateney</a></h1>
+
+    <div class="account" id="account">
+      <a href="/login/" class="login-pill" id="loginPill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        <span class="login-pill-text">ログイン</span>
+      </a>
+    </div>
+
+    <div class="header-actions">
+      <button class="icon-btn darkmode" id="darkmodeButton" aria-label="ダークモード切替">
+        <div class="toggle-track">
+          <div class="rays">
+            <span style="--i: 0"></span><span style="--i: 1"></span>
+            <span style="--i: 2"></span><span style="--i: 3"></span>
+            <span style="--i: 4"></span><span style="--i: 5"></span>
+            <span style="--i: 6"></span><span style="--i: 7"></span>
+          </div>
+          <div class="sun-core"></div>
+          <div class="moon-cover"></div>
+        </div>
+      </button>
+      <button class="icon-btn menu-button" id="menuButton" aria-label="メニュー">
+        <div class="bars"><span></span><span></span><span></span></div>
+      </button>
+    </div>
+  </header>
+
+  <div class="overlay" id="overlay"></div>
+
+  <!-- SLIDE MENU -->
+  <nav class="menu" id="menu">
+    <a href="/"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg> Home</a>
+    <a href="/characters/"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg> Characters</a>
+    <a href="/pack/"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/><path d="M3.3 7.3 12 12l8.7-4.7"/><path d="M12 22V12"/></svg> Pack</a>
+    <a href="/create/"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 12-8.373 8.373a1 1 0 1 1-3-3L12 9"/><path d="m18 15 4-4"/></svg> Create</a>
+    <a href="/about/"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg> About</a>
+    <a href="/settings/"><svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Settings</a>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="main-inner" id="content">
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p id="loading-text">読み込み中...</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    /* =========================
+       DARK MODE
+    ========================= */
+    const darkmodeButton = document.getElementById("darkmodeButton");
+    function applyDarkMode(on) {
+      document.body.classList.toggle("dark", on);
+      darkmodeButton.classList.toggle("active", on);
+    }
+    try {
+      if (localStorage.getItem("ateney-dark") === "1") applyDarkMode(true);
+    } catch (e) {}
+    darkmodeButton.addEventListener("click", function() {
+      var isDark = !document.body.classList.contains("dark");
+      applyDarkMode(isDark);
+      try { localStorage.setItem("ateney-dark", isDark ? "1" : "0"); } catch (e) {}
+    });
+
+    /* =========================
+       HAMBURGER MENU
+    ========================= */
+    var menuButton = document.getElementById("menuButton");
+    var menu = document.getElementById("menu");
+    var overlay = document.getElementById("overlay");
+    function toggleMenu(force) {
+      var open = force !== undefined ? force : !menu.classList.contains("open");
+      menuButton.classList.toggle("open", open);
+      menu.classList.toggle("open", open);
+      overlay.classList.toggle("show", open);
+    }
+    menuButton.addEventListener("click", function() { toggleMenu(); });
+    overlay.addEventListener("click", function() { toggleMenu(false); });
+
+    /* =========================
+       AUTH CHECK
+    ========================= */
+    var authUser = null;
+    try { var raw = localStorage.getItem("ateney-user"); if (raw) authUser = JSON.parse(raw); } catch (e) {}
+    if (authUser) {
+      var loginPill = document.getElementById("loginPill");
+      if (loginPill) loginPill.style.display = "none";
+    }
+
+    /* =========================
+       SPA ROUTER — 404.html ハック
+       GitHub Pagesはファイルがないパスに404.htmlを返す。
+       これを利用して /character/:uuid/ をルーティングする。
+    ========================= */
+    var path = window.location.pathname;
+    var content = document.getElementById("content");
+    var cfg = window.ATENEY_CONFIG || {};
+    var apiBase = cfg.API_BASE || "https://ateney-api.ateney-ai.workers.dev";
+
+    // UUID正規表現 — 12345678-1234-1234-1234-123456789abc
+    var uuidRegex = /^\/character\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/?$/;
+
+    function setText(el, text) { if (el) el.textContent = text || ""; }
+
+    function showNotFound() {
+      document.title = "404 - ateney";
+      content.innerHTML =
+        '<div class="not-found">' +
+        '<h1>404</h1>' +
+        '<p>ページが見つかりません。URL間違ってない？</p>' +
+        '<p style="margin-top:20px"><a href="/">ホームに戻る</a></p>' +
+        '</div>';
+    }
+
+    function showError(msg) {
+      document.title = "エラー - ateney";
+      content.innerHTML =
+        '<div class="error-state">' +
+        '<p>' + msg + '</p>' +
+        '<p style="margin-top:16px"><a href="/characters/" style="color:var(--accent);text-decoration:none;font-weight:500">キャラクター一覧に戻る</a></p>' +
+        '</div>';
+    }
+
+    function renderCharacter(c) {
+      document.title = (c.name || "Character") + " - ateney";
+
+      // アバター
+      var avatarHtml = "";
+      if (c.avatar_url) {
+        avatarHtml = '<img src="' + c.avatar_url + '" alt="' + (c.name || "character") + '" onerror="this.parentElement.innerHTML=\'<div class=char-avatar-fallback>' + ((c.name || "?").charAt(0)) + '</div>\'">';
+      } else {
+        avatarHtml = '<div class="char-avatar-fallback">' + ((c.name || "?").charAt(0)) + '</div>';
+      }
+
+      // タグ
+      var tagsHtml = "";
+      if (c.tags) {
+        var tagList = c.tags.split(",").map(function(t) { return t.trim(); }).filter(Boolean);
+        tagsHtml = tagList.map(function(t) {
+          return '<span class="char-tag">' + t + '</span>';
+        }).join("");
+      }
+      // genreもタグとして表示
+      if (c.genre) {
+        var genres = c.genre.split(",").map(function(g) { return g.trim(); }).filter(Boolean);
+        genres.forEach(function(g) {
+          tagsHtml += '<span class="char-tag">' + g + '</span>';
+        });
+      }
+
+      // セクション組み立て
+      var html = '<div class="char-detail">';
+      html += '<a href="/characters/" class="char-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>キャラクター一覧</a>';
+
+      html += '<div class="char-header">';
+      html += '<div class="char-avatar">' + avatarHtml + '</div>';
+      html += '<div class="char-title"><h1 id="char-name"></h1><div class="char-tags" id="char-tags">' + tagsHtml + '</div></div>';
+      html += '</div>';
+
+      if (c.description) {
+        html += '<div class="char-section"><h2>説明</h2><p id="char-desc"></p></div>';
+      }
+      if (c.personality) {
+        html += '<div class="char-section"><h2>性格</h2><p id="char-personality"></p></div>';
+      }
+      if (c.greeting) {
+        html += '<div class="char-section"><h2>挨拶</h2><p id="char-greeting" style="font-style:italic"></p></div>';
+      }
+
+      html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>チャット開始（準備中）</button></div>';
+
+      html += '</div>';
+
+      content.innerHTML = html;
+
+      // セキュアにDOM設定（XSS対策 — textContent使用）
+      setText(document.getElementById("char-name"), c.name);
+      setText(document.getElementById("char-desc"), c.description);
+      setText(document.getElementById("char-personality"), c.personality);
+      setText(document.getElementById("char-greeting"), c.greeting);
+    }
+
+    async function loadCharacter(uuid) {
+      try {
+        var res = await fetch(apiBase + "/api/character/" + uuid);
+
+        if (res.status === 404) {
+          showNotFound();
+          return;
+        }
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+
+        var data = await res.json();
+        var c = data.character || data;
+        renderCharacter(c);
+      } catch (e) {
+        console.error("[ateney] Failed to load character:", e);
+        showError("キャラクターを読み込めませんでした: " + e.message);
+      }
+    }
+
+    // ルーティング判定
+    var match = path.match(uuidRegex);
+    if (match) {
+      // /character/:uuid/ → キャラクター詳細ページ
+      var charUuid = match[1];
+      loadCharacter(charUuid);
+    } else {
+      // その他の404
+      showNotFound();
+    }
+  </script>
+</body>
+</html>
