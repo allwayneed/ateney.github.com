@@ -980,6 +980,7 @@
         '</div>';
     }
 
+
     function renderCharacter(c) {
       document.title = (c.name || "Character") + " - ateney";
 
@@ -994,14 +995,21 @@
       // タグ
       var tagsHtml = "";
       if (c.tags) {
-        var tagList = c.tags.split(",").map(function(t) { return t.trim(); }).filter(Boolean);
+        var tagList = c.tags.split(",").map(function(t) {
+          return t.trim();
+        }).filter(Boolean);
+
         tagsHtml = tagList.map(function(t) {
           return '<span class="char-tag">' + t + '</span>';
         }).join("");
       }
+
       // genreもタグとして表示
       if (c.genre) {
-        var genres = c.genre.split(",").map(function(g) { return g.trim(); }).filter(Boolean);
+        var genres = c.genre.split(",").map(function(g) {
+          return g.trim();
+        }).filter(Boolean);
+
         genres.forEach(function(g) {
           tagsHtml += '<span class="char-tag">' + g + '</span>';
         });
@@ -1009,60 +1017,165 @@
 
       // セクション組み立て
       var html = '<div class="char-detail">';
+      
       html += '<a href="/characters/" class="char-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>キャラクター一覧</a>';
-
+      
       html += '<div class="char-header">';
       html += '<div class="char-avatar">' + avatarHtml + '</div>';
       html += '<div class="char-title"><h1 id="char-name"></h1><div class="char-tags" id="char-tags">' + tagsHtml + '</div></div>';
       html += '</div>';
-
+      
       if (c.description) {
         html += '<div class="char-section"><h2>説明</h2><p id="char-desc"></p></div>';
       }
+      
       if (c.personality) {
         html += '<div class="char-section"><h2>性格</h2><p id="char-personality"></p></div>';
       }
+      
       if (c.greeting) {
         html += '<div class="char-section"><h2>挨拶</h2><p id="char-greeting" style="font-style:italic"></p></div>';
       }
-
+      
       html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>チャット開始（準備中）</button></div>';
-
+      
       html += '</div>';
-
+      
       content.innerHTML = html;
-
+      
       // セキュアにDOM設定（XSS対策 — textContent使用）
       setText(document.getElementById("char-name"), c.name);
       setText(document.getElementById("char-desc"), c.description);
       setText(document.getElementById("char-personality"), c.personality);
       setText(document.getElementById("char-greeting"), c.greeting);
     }
-
+      
+      
+    function renderscene(c) {
+      document.title = (c.name || "Scene") + " - ateney";
+      
+      // アバター
+      var avatarHtml = "";
+      avatarHtml = '<div class="char-avatar-fallback">' + ((c.name || "?").charAt(0)) + '</div>';
+      
+      // タグ
+      var tagsHtml = "";
+      if (c.tags) {
+        var tagList = c.tags.split(",").map(function(t) {
+          return t.trim();
+        }).filter(Boolean);
+      
+        tagsHtml = tagList.map(function(t) {
+          return '<span class="scene-tag">' + t + '</span>';
+        }).join("");
+      }
+      
+      // genreもタグとして表示
+      if (c.genre) {
+        var genres = c.genre.split(",").map(function(g) {
+          return g.trim();
+        }).filter(Boolean);
+      
+        genres.forEach(function(g) {
+          tagsHtml += '<span class="scene-tag">' + g + '</span>';
+        });
+      }
+      
+      // セクション組み立て
+      var html = '<div class="char-detail">';
+      
+      html += '<a href="/scenes/" class="char-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>シーン一覧</a>';
+      
+      html += '<div class="char-header">';
+      html += '<div class="char-avatar">' + avatarHtml + '</div>';
+      html += '<div class="char-title"><h1 id="scene-name"></h1><div class="char-tags" id="scene-tags">' + tagsHtml + '</div></div>';
+      html += '</div>';
+      
+      if (c.description) {
+        html += '<div class="char-section"><h2>説明</h2><p id="scene-desc"></p></div>';
+      }
+      
+      if (c.personality) {
+        html += '<div class="char-section"><h2>性格</h2><p id="scene-personality"></p></div>';
+      }
+      
+      if (c.greeting) {
+        html += '<div class="char-section"><h2>会話例</h2><p id="scene-greeting" style="font-style:italic"></p></div>';
+      }
+      
+      html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 2 0 0 1 2 2z"/></svg>ライブラリに追加</button></div>';
+      
+      html += '</div>';
+      
+      content.innerHTML = html;
+      
+      // セキュアにDOM設定（XSS対策 — textContent使用）
+      setText(document.getElementById("scene-name"), c.name);
+      setText(document.getElementById("scene-desc"), c.description);
+      setText(document.getElementById("scene-personality"), c.personality);
+      setText(document.getElementById("scene-greeting"), c.greeting);
+    }
+      
+      
     async function loadCharacter(uuid) {
       startLoadingRotation();
+      
       try {
         var res = await fetch(apiBase + "/api/character/" + uuid);
-
+      
         if (res.status === 404) {
           stopLoadingRotation();
           showNotFound();
           return;
         }
+      
         if (!res.ok) {
           throw new Error("HTTP " + res.status);
         }
-
+      
         var data = await res.json();
         stopLoadingRotation();
+      
         var c = data.character || data;
         renderCharacter(c);
+      
       } catch (e) {
         console.error("[ateney] Failed to load character:", e);
         stopLoadingRotation();
         showError("キャラクターを読み込めませんでした: " + e.message);
       }
     }
+      
+      
+    async function loadscene(uuid) {
+      startLoadingRotation();
+      
+      try {
+        var res = await fetch(apiBase + "/api/scene/" + uuid);
+      
+        if (res.status === 404) {
+          stopLoadingRotation();
+          showNotFound();
+          return;
+        }
+      
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+      
+        var data = await res.json();
+        stopLoadingRotation();
+      
+        var s = data.scene || data;
+        renderscene(s);
+      
+      } catch (e) {
+        console.error("[ateney] Failed to load scene:", e);
+        stopLoadingRotation();
+        showError("シーンがしーんとなってました。: " + e.message);
+      }
+    }
+
 
     // ルーティング判定
     function getRoute() {
@@ -1082,6 +1195,10 @@
     
       if (route.name === "character" && route.id) {
         loadCharacter(route.id);
+        return;
+      }
+      if (route.name === "scene" && route.id) {
+        loadscene(toute.id);
         return;
       }
     
