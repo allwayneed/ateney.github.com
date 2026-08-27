@@ -946,6 +946,7 @@
 
     // UUID正規表現 — 12345678-1234-1234-1234-123456789abc
     var uuidRegex = /^\/character\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/?$/;
+    var uuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
     function setText(el, text) { if (el) el.textContent = text || ""; }
 
@@ -975,7 +976,7 @@
       content.innerHTML =
         '<div class="error-state">' +
         '<p>' + msg + '</p>' +
-        '<p style="margin-top:16px"><a href="/characters/" style="color:var(--accent);text-decoration:none;font-weight:500">キャラクター一覧に戻る</a></p>' +
+        '<p style="margin-top:16px"><a href="/" style="color:var(--accent);text-decoration:none;font-weight:500">ホームに戻る</a></p>' +
         '</div>';
     }
 
@@ -1064,15 +1065,35 @@
     }
 
     // ルーティング判定
-    var match = path.match(uuidRegex);
-    if (match) {
-      // /character/:uuid/ → キャラクター詳細ページ
-      var charUuid = match[1];
-      loadCharacter(charUuid);
-    } else {
-      // その他の404
+    function getRoute() {
+      var parts =
+        window.location.pathname
+          .split("/")
+          .filter(Boolean);
+
+      return {
+        name: parts[0] || null,
+        id: parts[1] || null,
+      };
+    }
+
+    function router() {
+      var route = getRoute();
+    
+      if (route.name === "character" && route.id) {
+        loadCharacter(route.id);
+        return;
+      }
+    
       showNotFound();
     }
+
+
+    /* =========================
+       START
+    ========================= */
+
+    router();
   </script>
 </body>
 </html>
