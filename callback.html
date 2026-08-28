@@ -251,7 +251,33 @@
             console.log("verifier:", !!verifier);
             console.log("redirectUri:", redirectUri);
           }
-        } 
+        } else if (provider === "yahoo") {
+          statusEl.textContent("yahoo! hahha! oh!!!!!")
+          // PKCEいらないんだぜ。yahoo,私の気分も、yahoooooo!!!!
+          try {
+            logLine("APIに送信リクエスト開始...");
+            statusEl.textContent = "サーバーで認証処理中...";
+
+            const res = await fetch(apiBase + "/login/yahoo", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                code: code,
+                redirect_uri: redirectUri,
+              }),
+            });
+            if (!res.ok) {
+              const errBody = await res.text();
+              throw new Error("API応答エラー (" + res.status + "): " + errBody);
+            }
+            const data = await res.json();
+            saveAuthResult(data, "microsoft");
+          } catch (err) {
+            setError("エラー出たぁ！バ〇ルドームも出たぁ！！！: " + err.message);
+          }
+        }
 
         return;
       }
