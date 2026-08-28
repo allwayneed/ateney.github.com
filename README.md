@@ -1,2 +1,2 @@
 # ateney.github.com
-ateney page
+どこ見てんのよ
