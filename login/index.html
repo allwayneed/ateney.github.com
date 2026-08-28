@@ -370,11 +370,13 @@
 
     const hasGoogle = cfg.GOOGLE_CLIENT_ID && cfg.GOOGLE_CLIENT_ID !== "";
     const hasLine   = cfg.LINE_CHANNEL_ID && cfg.LINE_CHANNEL_ID !== "";
+    const hasmicrosoft = cfg.MICROSOFT_CLIENT_ID && cfg.MICROSOFT_CLIENT_ID !== "";
     const hasApple  = cfg.APPLE_CLIENT_ID && cfg.APPLE_CLIENT_ID !== "";
 
     if (!hasGoogle) log("⚠ GOOGLE_CLIENT_ID 未設定", "err");
     if (!hasLine)   log("⚠ LINE_CHANNEL_ID 未設定", "err");
     if (!hasApple)  log("⚠ APPLE_CLIENT_ID 未設定", "err");
+    if (!hasmicrosoft) log("⚠ MICROSOFT_CLIENT_ID 未設定", "err")
 
     const redirectBase = cfg.REDIRECT_BASE || window.location.origin;
 
