@@ -511,6 +511,40 @@
         this.classList.remove("loading");
       }
     });
+    document.getElementById("yahoo-login").addEventListener("click", async function () {
+      this.classList.add("loading");
+        
+      try {
+        const state = generateState();
+        const { verifier, challenge } = await generatePKCE();
+      
+        // PKCE verifier / stateをコールバックで使用
+        sessionStorage.setItem("yahoo-verifier", verifier);
+        sessionStorage.setItem("yahoo-state", state);
+      
+        const redirectUri = `${redirectBase}/callback.html`;
+      
+        const params = new URLSearchParams({
+          client_id: cfg.YAHOO_CLIENT_ID,
+          redirect_uri: redirectUri,
+          response_type: "code",
+          state: state,
+          code_challenge: challenge,
+          code_challenge_method: "S256",
+        });
+      
+        log("Yahoo!: リダイレクト中...", "info");
+        log(`redirect: ${redirectUri}`, "info");
+      
+        window.location.href =
+          `https://auth.login.yahoo.co.jp/yconnect/v2/authorization?${params}`;
+      
+      } catch (err) {
+        console.error("Yahoo! OAuth error:", err);
+        log(`Yahoo!: ${err.message}`, "err");
+        this.classList.remove("loading");
+      }
+    });
 
     /* =========================
        APPLE OAUTH (Sign in with Apple JS)
