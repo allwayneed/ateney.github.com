@@ -136,35 +136,36 @@
         let provider = null;
         if (state === sessionStorage.getItem("line-state")) provider = "line";
         else if (state === sessionStorage.getItem("google-state")) provider = "google";
-
+        else if (state === sessionStorage.getItem("microsoft-state")) provider = "microsoft";
+        else if (state === sessionStorage.getItem("yahoo-state")) provider = "yahoo";
         if (!provider) {
-          setError("state検証失敗: 不正なコールバックです");
+          setError("state検証失敗: あ！こけた！！お膝擦りむいたぁ！！！");
           return;
         }
         sessionStorage.removeItem(provider + "-state");
-        logLine("provider判定: " + provider);
+        logLine("provider: " + provider);
 
         const apiBase = cfg.API_BASE || "";
         if (!apiBase) {
-          setError("API_BASEが未設定です。config.jsを確認してください。");
+          setError("API_BASEが未設定です！開発者が馬鹿なせいで今止まりました！すんません！");
           return;
         }
 
         const redirectUri = redirectBase + "/callback.html";
 
         if (provider === "line") {
-          statusEl.textContent = "LINE認証コード受信。トークン交換中...";
+          statusEl.textContent = "ﾋﾟﾋﾟｯ！認証コード受信。トークン交換中...";
 
           const verifier = sessionStorage.getItem("line-verifier");
           sessionStorage.removeItem("line-verifier");
 
           if (!verifier) {
-            setError("PKCE verifierが見つかりません。セッションが切れました。");
+            setError("PKCE verifierが見つかりません。セッションが切れた！ごめん！！！！");
             return;
           }
 
           try {
-            logLine("LINE code → Workerに送信中...");
+            logLine("APIに送信リクエスト開始...");
             statusEl.textContent = "サーバーで認証処理中...";
 
             const res = await fetch(apiBase + "/login/line", {
@@ -215,7 +216,38 @@
           } catch (err) {
             setError("Google認証エラー: " + err.message);
           }
-        }
+        }　else if (provider === "microsoft") {
+          statusEl.textContent = "ちょいまち、今怪電波拾ったんだけどw電波電波の怪電波～♪";
+          const verifier = sessionStorage.getItem("microsoft-verifier");
+          sessionStorage.removeItem("microsoft-verifier");
+          
+          if (!verifier) {
+            setError("待って、PKCEが壊れてんだけど！何やってんだ開発者ぁ！！！！！");
+            return;
+          }
+          try {
+            logLine("APIに送信リクエスト開始...");
+            statusEl.textContent = "サーバーで認証処理中...";
+
+            const res = await fetch(apiBase + "/login/microsoft", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                code: code,
+                verifier: verifier,
+                redirect_uri: redirectUri,
+              }),
+            });
+            if (!res.ok) {
+              const errBody = await res.text();
+              throw new Error("API応答エラー (" + res.status + "): " + errBody);
+            }
+            const data = await res.json();
+            saveAuthResult(data, "microsoft");
+          } catch (err) {
+            setError("エラー出たぁ！バ〇ルドームも出たぁ！！！: " + err.message);
+          }
+        } 
 
         return;
       }
