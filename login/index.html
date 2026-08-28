@@ -470,6 +470,45 @@
 
       window.location.href = `https://access.line.me/oauth2/v2.1/authorize?${params}`;
     });
+    /* =========================
+       Microsoft oauth
+    ==========================*/
+    document.getElementById("microsoft-login").addEventListener("click", async function () {
+      this.classList.add("loading");
+    
+      try {
+        const state = generateState();
+        const { verifier, challenge } = await generatePKCE();
+      
+        // PKCE verifier / stateをコールバックで使用
+        sessionStorage.setItem("microsoft-verifier", verifier);
+        sessionStorage.setItem("microsoft-state", state);
+      
+        const redirectUri = `${redirectBase}/callback.html`;
+      
+        const params = new URLSearchParams({
+          client_id: cfg.MICROSOFT_CLIENT_ID,
+          response_type: "code",
+          redirect_uri: redirectUri,
+          response_mode: "query",
+          scope: "openid profile email",
+          state: state,
+          code_challenge: challenge,
+          code_challenge_method: "S256",
+        });
+      
+        log("Microsoft: リダイレクト中...", "info");
+        log(`redirect: ${redirectUri}`, "info");
+      
+        window.location.href =
+          `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params}`;
+      
+      } catch (err) {
+        console.error("Microsoft OAuth error:", err);
+        log(`Microsoft: ${err.message}`, "err");
+        this.classList.remove("loading");
+      }
+    });
 
     /* =========================
        APPLE OAUTH (Sign in with Apple JS)
