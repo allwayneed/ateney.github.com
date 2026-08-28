@@ -246,6 +246,10 @@
             saveAuthResult(data, "microsoft");
           } catch (err) {
             setError("エラー出たぁ！バ〇ルドームも出たぁ！！！: " + err.message);
+            console.log("code:", !!code);
+            console.log("state:", !!state);
+            console.log("verifier:", !!verifier);
+            console.log("redirectUri:", redirectUri);
           }
         } 
 
