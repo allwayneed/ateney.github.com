@@ -951,6 +951,43 @@
         animation: shimmer 1.4s infinite;
     }
 
+    /* CREATE PAGE — 小さい画面用 */
+    @media (max-width: 480px) {
+      .create-toggle {
+        padding: 11px 12px;
+        font-size: 0.82rem;
+        border-radius: 12px;
+      }
+      .create-toggle svg {
+        width: 17px;
+        height: 17px;
+      }
+      .create-menu {
+        gap: 8px;
+      }
+      .create-menu li a {
+        padding: 9px 14px;
+        font-size: 0.78rem;
+        border-radius: 10px;
+      }
+      .filter {
+        gap: 6px;
+        margin-bottom: 16px;
+      }
+      .filter li a {
+        padding: 6px 12px;
+        font-size: 0.76rem;
+      }
+      .item-list li a {
+        padding: 10px 12px;
+        gap: 10px;
+      }
+      .item-list .item-thumb {
+        width: 32px;
+        height: 32px;
+      }
+    }
+
     /* REDUCED MOTION */
 
     @media (prefers-reduced-motion: reduce) {
