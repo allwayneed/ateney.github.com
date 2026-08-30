@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="/config.js"></script>
+
   <title>ateney</title>
 
   <style>
@@ -715,20 +715,6 @@
       .logo { font-size: 0.95rem; }
     }
 
-    /* Create ページ — スマホ対応 */
-    @media (max-width: 768px) {
-      .create-menu { gap: 8px; }
-      .create-menu li a { padding: 10px 14px; font-size: 0.82rem; }
-    }
-    @media (max-width: 480px) {
-      .create-menu { gap: 6px; }
-      .create-menu li a { padding: 9px 12px; font-size: 0.78rem; }
-      .create-menu li a svg { width: 16px; height: 16px; }
-      .filter li a { padding: 7px 14px; font-size: 0.78rem; }
-      .item-list li a { padding: 10px 12px; gap: 10px; }
-      .item-list .item-thumb { width: 32px; height: 32px; }
-    }
-
     /* カードグリッド */
     @media (max-width: 768px) {
       #character-list {
@@ -750,6 +736,163 @@
       .character-info { padding: 10px 12px; }
       .character-info h3 { font-size: 0.88rem; }
       .character-info p { font-size: 0.75rem; }
+    }
+
+    /* =========================
+       CREATE PAGE — create-menu
+    ========================= */
+    .create-menu {
+        display: flex;
+        gap: 10px;
+        list-style: none;
+        padding: 0;
+        margin-bottom: 28px;
+    }
+
+    .create-menu li a {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 10px 18px;
+        border-radius: 12px;
+        border: 1.5px solid var(--border);
+        background: var(--bg-elevated);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s var(--ease);
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .create-menu li a:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(91, 141, 239, 0.12);
+    }
+
+    .create-menu li a:active {
+        transform: translateY(0) scale(0.97);
+    }
+
+    /* =========================
+       CREATE PAGE — filter
+    ========================= */
+    .filter {
+        display: flex;
+        gap: 8px;
+        list-style: none;
+        margin-bottom: 20px;
+    }
+
+    .filter li a {
+        display: inline-block;
+        padding: 7px 16px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text-secondary);
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s var(--ease);
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .filter li a:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .filter li a.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+    }
+
+    body.dark .filter li a.active {
+        color: #0d0d0f;
+    }
+
+    /* =========================
+       CREATE PAGE — item-list
+    ========================= */
+    .item-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .item-list li a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--bg-elevated);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.2s var(--ease);
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .item-list li a:hover {
+        border-color: var(--accent);
+        box-shadow: 0 4px 12px var(--shadow);
+        transform: translateX(4px);
+    }
+
+    .item-list li a:active {
+        transform: translateX(2px) scale(0.99);
+    }
+
+    .item-list .item-thumb {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        background: var(--border);
+        flex-shrink: 0;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .item-list .item-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .item-list .item-name {
+        flex: 1;
+    }
+
+    .item-list .item-type {
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        background: var(--bg);
+        padding: 3px 8px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+    }
+
+    /* item-list — ローディング */
+    .item-skeleton {
+        height: 44px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: linear-gradient(90deg, var(--border) 25%, var(--bg-elevated) 50%, var(--border) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s infinite;
     }
 
     /* REDUCED MOTION */
@@ -883,32 +1026,18 @@
   <main class="main">
     <div class="main-inner">
         <h2>Create</h2>
-        <p class="section-label">新規作成</p>
         <ul class="create-menu">
-            <li><a href="/create/character/">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
-                Character
-            </a></li>
-            <li><a href="/create/scene/">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14a2 2 0 0 1 2 2v14l-7-3-7 3V5a2 2 0 0 1 2-2z"/><path d="M12 8v4"/><path d="M10 10h4"/></svg>
-                Scene
-            </a></li>
-            <li><a href="/create/rag/">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
-                RAG
-            </a></li>
+            <li><a href="/create/character/">character</a></li>
+            <li><a href="/create/scene/">scene</a></li>
+            <li><a href="/create/rag/">RAG</a></li>
         </ul>
-
-        <p class="section-label">あなたの作品</p>
         <ul class="filter" id="filter">
-            <li><a href="#c" data-type="character" class="active">Character</a></li>
-            <li><a href="#s" data-type="scene">Scene</a></li>
+            <li><a href="#c" data-type="character" class="active">character</a></li>
+            <li><a href="#s" data-type="scene">scene</a></li>
             <li><a href="#r" data-type="rag">RAG</a></li>
         </ul>
-
-        <!-- 作ったアイテム一覧 -->
         <ul class="item-list" id="itemList">
-            <!-- 動的に生成される -->
+            <!-- 動的に生成 -->
         </ul>
     </div>
   </main>
@@ -1147,134 +1276,76 @@
     });
 
     /* =========================
-       CREATE — フィルター + アイテム一覧
-       作ったキャラ/シーン/RAGを箇条書きで表示する君。
-       フィルター切り替えるたびにAPI叩いて一覧を更新する仕様。
+       CREATE — filter + item list
     ========================= */
     var cfg = window.ATENEY_CONFIG || {};
     var apiBase = cfg.API_BASE || "https://ateney-api.ateney-ai.workers.dev";
-
     var filterTabs = document.querySelectorAll("#filter a");
     var itemList = document.getElementById("itemList");
-    var currentType = "character";
 
-    // --- フィルター切り替え ---
     filterTabs.forEach(function(tab) {
       tab.addEventListener("click", function(e) {
         e.preventDefault();
         filterTabs.forEach(function(t) { t.classList.remove("active"); });
         tab.classList.add("active");
-        currentType = tab.getAttribute("data-type");
-        loadItems(currentType);
+        loadItems(tab.getAttribute("data-type"));
       });
     });
 
-    // --- 認証トークン取得 ---
     function getAuthHeaders() {
       var token = localStorage.getItem("ateney-token");
-      if (token) {
-        return { "Authorization": "Bearer " + token };
-      }
-      return {};
+      return token ? { "Authorization": "Bearer " + token } : {};
     }
 
-    // --- アイテム読み込み ---
     function loadItems(type) {
-      // スケルトン表示（ロード中）
       var skel = "";
-      for (var i = 0; i < 4; i++) {
-        skel += '<li><div class="item-skeleton"></div></li>';
-      }
+      for (var i = 0; i < 4; i++) skel += '<li><div class="item-skeleton"></div></li>';
       itemList.innerHTML = skel;
 
-      var endpoint = apiBase + "/api/" + type;
-
-      fetch(endpoint, { headers: getAuthHeaders() })
-        .then(function(res) {
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          return res.json();
-        })
+      fetch(apiBase + "/api/" + type, { headers: getAuthHeaders() })
+        .then(function(res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
         .then(function(data) {
-          // レスポンスの形がバラバラなので正規化する（カオスを秩序へ）
-          var items = [];
-          if (type === "character") {
-            items = data.characters || data.items || data || [];
-          } else if (type === "scene") {
-            items = data.scenes || data.items || data || [];
-          } else if (type === "rag") {
-            items = data.documents || data.items || data || [];
-          }
-
+          var items = data.characters || data.scenes || data.documents || data.items || data || [];
           if (!Array.isArray(items) || items.length === 0) {
-            itemList.innerHTML = '<li style="color: var(--text-secondary); padding: 24px 0; text-align: center; font-size: 0.88rem;">まだ何も作ってないよ。上のリンクから作ってみよう ✨</li>';
+            itemList.innerHTML = '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">まだ何も作ってないよ ✨</li>';
             return;
           }
-
-          renderItems(items, type);
+          itemList.innerHTML = "";
+          items.forEach(function(item, i) {
+            var li = document.createElement("li");
+            var a = document.createElement("a");
+            a.href = "/" + type + "/" + (item.id || item.uuid || "") + "/";
+            var thumb = document.createElement("div");
+            thumb.className = "item-thumb";
+            if (item.avatar_url || item.image_url) {
+              var img = document.createElement("img");
+              img.src = item.avatar_url || item.image_url;
+              img.alt = item.name || item.title || "";
+              img.loading = "lazy";
+              img.addEventListener("error", function() { thumb.textContent = (item.name||item.title||"?").charAt(0).toUpperCase(); });
+              thumb.appendChild(img);
+            } else {
+              thumb.textContent = (item.name || item.title || "?").charAt(0).toUpperCase();
+            }
+            var name = document.createElement("span");
+            name.className = "item-name";
+            name.textContent = item.name || item.title || "Untitled";
+            var tag = document.createElement("span");
+            tag.className = "item-type";
+            tag.textContent = type;
+            a.appendChild(thumb); a.appendChild(name); a.appendChild(tag);
+            a.style.opacity = "0"; a.style.transform = "translateY(10px)";
+            a.style.transition = "opacity 0.3s var(--ease), transform 0.3s var(--ease)";
+            setTimeout(function() { a.style.opacity = "1"; a.style.transform = "translateY(0)"; }, i * 50);
+            li.appendChild(a); itemList.appendChild(li);
+          });
         })
         .catch(function(err) {
-          console.error("Failed to load items:", err);
-          itemList.innerHTML = '<li style="color: var(--text-secondary); padding: 24px 0; text-align: center; font-size: 0.88rem;">読み込めなかった。APIが寝てるかも… 😴</li>';
+          console.error("loadItems error:", err);
+          itemList.innerHTML = '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">読み込めなかった 😴</li>';
         });
     }
 
-    // --- アイテム描画（箇条書きボタン） ---
-    function renderItems(items, type) {
-      itemList.innerHTML = "";
-
-      items.forEach(function(item, i) {
-        var li = document.createElement("li");
-
-        var link = document.createElement("a");
-        link.href = "/" + type + "/" + (item.id || item.uuid || "") + "/";
-
-        // サムネイル
-        var thumb = document.createElement("div");
-        thumb.className = "item-thumb";
-
-        if (item.avatar_url || item.image_url) {
-          var img = document.createElement("img");
-          img.src = item.avatar_url || item.image_url;
-          img.alt = item.name || item.title || "";
-          img.loading = "lazy";
-          img.addEventListener("error", function() {
-            thumb.innerHTML = "";
-            thumb.textContent = (item.name || item.title || "?").charAt(0).toUpperCase();
-          });
-          thumb.appendChild(img);
-        } else {
-          thumb.textContent = (item.name || item.title || "?").charAt(0).toUpperCase();
-        }
-
-        // 名前
-        var name = document.createElement("span");
-        name.className = "item-name";
-        name.textContent = item.name || item.title || "Untitled";
-
-        // タイプラベル
-        var typeLabel = document.createElement("span");
-        typeLabel.className = "item-type";
-        typeLabel.textContent = type;
-
-        link.appendChild(thumb);
-        link.appendChild(name);
-        link.appendChild(typeLabel);
-
-        // カード入場アニメ用の遅延
-        link.style.opacity = "0";
-        link.style.transform = "translateY(10px)";
-        link.style.transition = "opacity 0.3s var(--ease), transform 0.3s var(--ease)";
-        setTimeout(function() {
-          link.style.opacity = "1";
-          link.style.transform = "translateY(0)";
-        }, i * 50);
-
-        li.appendChild(link);
-        itemList.appendChild(li);
-      });
-    }
-
-    // 初期読み込み — characterタブで開始
     loadItems("character");
   </script>
 </body>
