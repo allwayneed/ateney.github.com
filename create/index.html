@@ -741,12 +741,68 @@
     /* =========================
        CREATE PAGE — create-menu
     ========================= */
+    /* +create トグルボタン */
+    .create-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 14px;
+        background: var(--bg-elevated);
+        color: var(--text);
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s var(--ease);
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .create-toggle svg {
+        width: 20px;
+        height: 20px;
+        transition: transform 0.3s var(--ease);
+    }
+
+    .create-toggle:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+        box-shadow: 0 4px 14px rgba(91, 141, 239, 0.12);
+    }
+
+    .create-toggle:active {
+        transform: scale(0.98);
+    }
+
+    .create-toggle.open svg {
+        transform: rotate(45deg);
+    }
+
+    /* create-menu — スライド式 */
     .create-menu {
         display: flex;
         gap: 10px;
         list-style: none;
         padding: 0;
         margin-bottom: 28px;
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transform: translateY(-8px);
+        transition: max-height 0.35s var(--ease), opacity 0.25s var(--ease), transform 0.3s var(--ease), margin-bottom 0.3s var(--ease);
+    }
+
+    .create-menu.open {
+        max-height: 200px;
+        opacity: 1;
+        transform: translateY(0);
+        margin-bottom: 28px;
+    }
+
+    .create-menu:not(.open) {
+        margin-bottom: 0;
     }
 
     .create-menu li a {
@@ -1026,7 +1082,11 @@
   <main class="main">
     <div class="main-inner">
         <h2>Create</h2>
-        <ul class="create-menu">
+        <button class="create-toggle" id="createToggle" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            create
+        </button>
+        <ul class="create-menu" id="createMenu">
             <li><a href="/create/character/">character</a></li>
             <li><a href="/create/scene/">scene</a></li>
             <li><a href="/create/rag/">RAG</a></li>
@@ -1273,6 +1333,15 @@
         void s.offsetWidth;
         s.style.animation = "";
       });
+    });
+
+    /* +create トグル */
+    var createToggle = document.getElementById("createToggle");
+    var createMenu = document.getElementById("createMenu");
+    createToggle.addEventListener("click", function() {
+      var isOpen = createMenu.classList.toggle("open");
+      createToggle.classList.toggle("open", isOpen);
+      createToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
     });
 
     /* =========================
