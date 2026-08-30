@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  <script src="/config.js"></script>
   <title>ateney</title>
 
   <style>
@@ -874,10 +874,15 @@
             <li><a href="/create/scene/">scene</a></li>
             <li><a href="/create/rag/">RAG</a></li>
         </ul>
-        <ul class="filter">
-            <li><a href="#c">character</a></li>
-            <li><a href="#s">scene</a></li>
-            <li><a href="#r">RAG</a></li>
+        <ul class="filter" id="filter">
+            <li><a href="#c" data-type="character" class="active">character</a></li>
+            <li><a href="#s" data-type="scene">scene</a></li>
+            <li><a href="#r" data-type="rag">RAG</a></li>
+        </ul>
+
+        <!-- 作ったアイテム一覧 -->
+        <ul class="item-list" id="itemList">
+            <!-- 動的に生成される -->
         </ul>
     </div>
   </main>
@@ -1114,6 +1119,137 @@
         s.style.animation = "";
       });
     });
+
+    /* =========================
+       CREATE — フィルター + アイテム一覧
+       作ったキャラ/シーン/RAGを箇条書きで表示する君。
+       フィルター切り替えるたびにAPI叩いて一覧を更新する仕様。
+    ========================= */
+    var cfg = window.ATENEY_CONFIG || {};
+    var apiBase = cfg.API_BASE || "https://ateney-api.ateney-ai.workers.dev";
+
+    var filterTabs = document.querySelectorAll("#filter a");
+    var itemList = document.getElementById("itemList");
+    var currentType = "character";
+
+    // --- フィルター切り替え ---
+    filterTabs.forEach(function(tab) {
+      tab.addEventListener("click", function(e) {
+        e.preventDefault();
+        filterTabs.forEach(function(t) { t.classList.remove("active"); });
+        tab.classList.add("active");
+        currentType = tab.getAttribute("data-type");
+        loadItems(currentType);
+      });
+    });
+
+    // --- 認証トークン取得 ---
+    function getAuthHeaders() {
+      var token = localStorage.getItem("ateney-token");
+      if (token) {
+        return { "Authorization": "Bearer " + token };
+      }
+      return {};
+    }
+
+    // --- アイテム読み込み ---
+    function loadItems(type) {
+      // スケルトン表示（ロード中）
+      var skel = "";
+      for (var i = 0; i < 4; i++) {
+        skel += '<li><div class="item-skeleton"></div></li>';
+      }
+      itemList.innerHTML = skel;
+
+      var endpoint = apiBase + "/api/" + type;
+
+      fetch(endpoint, { headers: getAuthHeaders() })
+        .then(function(res) {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.json();
+        })
+        .then(function(data) {
+          // レスポンスの形がバラバラなので正規化する（カオスを秩序へ）
+          var items = [];
+          if (type === "character") {
+            items = data.characters || data.items || data || [];
+          } else if (type === "scene") {
+            items = data.scenes || data.items || data || [];
+          } else if (type === "rag") {
+            items = data.documents || data.items || data || [];
+          }
+
+          if (!Array.isArray(items) || items.length === 0) {
+            itemList.innerHTML = '<li style="color: var(--text-secondary); padding: 24px 0; text-align: center; font-size: 0.88rem;">まだ何も作ってないよ。上のリンクから作ってみよう ✨</li>';
+            return;
+          }
+
+          renderItems(items, type);
+        })
+        .catch(function(err) {
+          console.error("Failed to load items:", err);
+          itemList.innerHTML = '<li style="color: var(--text-secondary); padding: 24px 0; text-align: center; font-size: 0.88rem;">読み込めなかった。APIが寝てるかも… 😴</li>';
+        });
+    }
+
+    // --- アイテム描画（箇条書きボタン） ---
+    function renderItems(items, type) {
+      itemList.innerHTML = "";
+
+      items.forEach(function(item, i) {
+        var li = document.createElement("li");
+
+        var link = document.createElement("a");
+        link.href = "/" + type + "/" + (item.id || item.uuid || "") + "/";
+
+        // サムネイル
+        var thumb = document.createElement("div");
+        thumb.className = "item-thumb";
+
+        if (item.avatar_url || item.image_url) {
+          var img = document.createElement("img");
+          img.src = item.avatar_url || item.image_url;
+          img.alt = item.name || item.title || "";
+          img.loading = "lazy";
+          img.addEventListener("error", function() {
+            thumb.innerHTML = "";
+            thumb.textContent = (item.name || item.title || "?").charAt(0).toUpperCase();
+          });
+          thumb.appendChild(img);
+        } else {
+          thumb.textContent = (item.name || item.title || "?").charAt(0).toUpperCase();
+        }
+
+        // 名前
+        var name = document.createElement("span");
+        name.className = "item-name";
+        name.textContent = item.name || item.title || "Untitled";
+
+        // タイプラベル
+        var typeLabel = document.createElement("span");
+        typeLabel.className = "item-type";
+        typeLabel.textContent = type;
+
+        link.appendChild(thumb);
+        link.appendChild(name);
+        link.appendChild(typeLabel);
+
+        // カード入場アニメ用の遅延
+        link.style.opacity = "0";
+        link.style.transform = "translateY(10px)";
+        link.style.transition = "opacity 0.3s var(--ease), transform 0.3s var(--ease)";
+        setTimeout(function() {
+          link.style.opacity = "1";
+          link.style.transform = "translateY(0)";
+        }, i * 50);
+
+        li.appendChild(link);
+        itemList.appendChild(li);
+      });
+    }
+
+    // 初期読み込み — characterタブで開始
+    loadItems("character");
   </script>
 </body>
 </html>
