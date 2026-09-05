@@ -950,6 +950,17 @@
 
     function setText(el, text) { if (el) el.textContent = text || ""; }
 
+    // XSS対策: innerHTMLに差し込む動的値は必ずこれを通す
+    function escapeHtml(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function(ch) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+      });
+    }
+    // アバターURLはhttp(s)のみ許可
+    function safeAvatarUrl(u) {
+      return (typeof u === "string" && /^https?:\/\//i.test(u)) ? u : null;
+    }
+
     var notFoundMessages = [
       { h: "404", p: "ここにページはなかった。妖精が持っていったのかも。もしかしたらTKに、、、" },
       { h: "404", p: "リンク切れ。頭も切れる。" },
@@ -976,7 +987,7 @@
       document.title = "エラー - ateney";
       content.innerHTML =
         '<div class="error-state">' +
-        '<p>' + msg + '</p>' +
+        '<p>' + escapeHtml(msg) + '</p>' +
         '<p style="margin-top:16px"><a href="/" style="color:var(--accent);text-decoration:none;font-weight:500">ホームに戻る</a></p>' +
         '</div>';
     }
@@ -984,12 +995,12 @@
     function renderCharacter(c) {
       document.title = (c.name || "Character") + " - ateney";
 
-      // アバター
+      // アバター（XSS対策: エスケープ + http(s)スキーム検証、onerrorはJSで後付け）
       var avatarHtml = "";
-      if (c.avatar_url) {
-        avatarHtml = '<img src="' + c.avatar_url + '" alt="' + (c.name || "character") + '" onerror="this.parentElement.innerHTML=\'<div class=char-avatar-fallback>' + ((c.name || "?").charAt(0)) + '</div>\'">';
+      if (safeAvatarUrl(c.avatar_url)) {
+        avatarHtml = '<img class="char-avatar-img" src="' + escapeHtml(c.avatar_url) + '" alt="' + escapeHtml(c.name || "character") + '">';
       } else {
-        avatarHtml = '<div class="char-avatar-fallback">' + ((c.name || "?").charAt(0)) + '</div>';
+        avatarHtml = '<div class="char-avatar-fallback">' + escapeHtml((c.name || "?").charAt(0)) + '</div>';
       }
 
       // タグ
@@ -997,14 +1008,14 @@
       if (c.tags) {
         var tagList = c.tags.split(",").map(function(t) { return t.trim(); }).filter(Boolean);
         tagsHtml = tagList.map(function(t) {
-          return '<span class="char-tag">' + t + '</span>';
+          return '<span class="char-tag">' + escapeHtml(t) + '</span>';
         }).join("");
       }
       // genreもタグとして表示
       if (c.genre) {
         var genres = c.genre.split(",").map(function(g) { return g.trim(); }).filter(Boolean);
         genres.forEach(function(g) {
-          tagsHtml += '<span class="char-tag">' + g + '</span>';
+          tagsHtml += '<span class="char-tag">' + escapeHtml(g) + '</span>';
         });
       }
 
@@ -1033,6 +1044,19 @@
 
       content.innerHTML = html;
 
+      // 画像読み込み失敗時のフォールバック（textContentで安全に）
+      var img = content.querySelector(".char-avatar-img");
+      if (img) {
+        img.addEventListener("error", function() {
+          var wrap = img.parentElement;
+          wrap.innerHTML = "";
+          var fb = document.createElement("div");
+          fb.className = "char-avatar-fallback";
+          fb.textContent = (c.name || "?").charAt(0);
+          wrap.appendChild(fb);
+        });
+      }
+
       // セキュアにDOM設定（XSS対策 — textContent使用）
       setText(document.getElementById("char-name"), c.name);
       setText(document.getElementById("char-desc"), c.description);
@@ -1044,20 +1068,20 @@
 
       // アバター
       var avatarHtml = "";
-      avatarHtml = '<div class="char-avatar-fallback">' + ((c.name || "?").charAt(0)) + '</div>';
+      avatarHtml = '<div class="char-avatar-fallback">' + escapeHtml((c.name || "?").charAt(0)) + '</div>';
       // タグ
       var tagsHtml = "";
       if (c.tags) {
         var tagList = c.tags.split(",").map(function(t) { return t.trim(); }).filter(Boolean);
         tagsHtml = tagList.map(function(t) {
-          return '<span class="scene-tag">' + t + '</span>';
+          return '<span class="scene-tag">' + escapeHtml(t) + '</span>';
         }).join("");
       }
       // genreもタグとして表示
       if (c.genre) {
         var genres = c.genre.split(",").map(function(g) { return g.trim(); }).filter(Boolean);
         genres.forEach(function(g) {
-          tagsHtml += '<span class="scene-tag">' + g + '</span>';
+          tagsHtml += '<span class="scene-tag">' + escapeHtml(g) + '</span>';
         });
       }
 

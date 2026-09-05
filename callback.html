@@ -108,7 +108,8 @@
       logLine("認証成功: provider=" + provider + ", name=" + (u.name || data.name) + ", id=" + (u.id || data.id));
       logLine("JWT保存: " + (data.token ? "OK" : "なし（やばい）"));
 
-      statusEl.textContent = (provider === "line" ? "LINE" : "Google") + "認証完了！リダイレクト中...";
+      var providerLabel = { line: "LINE", google: "Google", microsoft: "Microsoft", yahoo: "Yahoo" }[provider] || provider;
+      statusEl.textContent = providerLabel + "認証完了！リダイレクト中...";
       setTimeout(function() { window.location.href = "/"; }, 1000);
     }
 
@@ -273,7 +274,7 @@
               throw new Error("API応答エラー (" + res.status + "): " + errBody);
             }
             const data = await res.json();
-            saveAuthResult(data, "microsoft");
+            saveAuthResult(data, "yahoo");
           } catch (err) {
             setError("エラー出たぁ！バ〇ルドームも出たぁ！！！: " + err.message);
           }
