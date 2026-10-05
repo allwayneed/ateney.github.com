@@ -115,7 +115,7 @@
       logLine("認証成功: provider=" + provider);
       logLine("JWT保存: " + (!!data.token));
 
-      var providerLabel = { line: "LINE", google: "Google", microsoft: "Microsoft", yahoo: "Yahoo" }[provider] || provider;
+      var providerLabel = { line: "LINE", google: "Google", microsoft: "Microsoft", yahoo: "Yahoo", apple: "Apple" }[provider] || provider;
       statusEl.textContent = providerLabel + "認証完了！リダイレクト中...";
       setTimeout(function() { window.location.href = "/"; }, 1000);
     }
@@ -145,6 +145,7 @@
         else if (state === sessionStorage.getItem("google-state")) provider = "google";
         else if (state === sessionStorage.getItem("microsoft-state")) provider = "microsoft";
         else if (state === sessionStorage.getItem("yahoo-state")) provider = "yahoo";
+        else if (state === sessionStorage.getItem("apple-state")) provider = "apple";
         if (!provider) {
           setError("state検証失敗: あ！こけた！！お膝擦りむいたぁ！！！");
           return;
@@ -279,16 +280,34 @@
           } catch (err) {
             setError("エラー出たぁ！バ〇ルドームも出たぁ！！！: " + err.message);
           }
+        } else if (provider === "apple") {
+          statusEl.textContent = "Apple認証コード受信。トークン交換中...";
+
+          try {
+            statusEl.textContent = "サーバーで認証処理中...";
+            // Issue #2: query 方式に切り替えたので、他プロバイダと同じ窓口で受けられる。
+            // Worker側の /login/apple はまだ未実装。実装されたらこの呼び出しで動く。
+            const res = await fetch(apiBase + "/login/apple", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                code: code,
+                redirect_uri: redirectUri,
+              }),
+            });
+            if (!res.ok) {
+              const errBody = await res.text();
+              throw new Error("Worker応答エラー (" + res.status + "): " + errBody);
+            }
+            const data = await res.json();
+            saveAuthResult(data, "apple");
+          } catch (err) {
+            setError("Apple認証エラー: " + err.message);
+          }
         }
 
         return;
       }
-
-      // Apple: response_mode=form_post の場合はPOSTだが、
-      // GitHub PagesではPOSTを受け取れないので、
-      // response_mode=queryに変更する必要がある。
-      // → Appleはform_postのみサポートしているため、
-      //   Cloudflare Workerを経由する必要がある。
 
       setError("不明なコールバック、なんかあると思ったら大間違い！ただ受け取る場所だからな。悪用できないで～");
       setTimeout(function() { window.location.href = "/"; }, 5000);

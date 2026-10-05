@@ -374,6 +374,23 @@
     const redirectBase = cfg.REDIRECT_BASE || window.location.origin;
 
     /* =========================
+       未設定プロバイダのボタンは非表示 (Issue #2)
+       CLIENT_ID が無いプロバイダのボタンは「押しても反応しない」状態で
+       表示されるより隠すほうが正直。
+    ========================= */
+    const providerButtons = [
+      ["google-login", hasGoogle],
+      ["line-login", hasLine],
+      ["yahoo-login", hasyahoo],
+      ["microsoft-login", hasmicrosoft],
+      ["apple-login", hasApple],
+    ];
+    providerButtons.forEach(([id, ok]) => {
+      const btn = document.getElementById(id);
+      if (btn && !ok) btn.style.display = "none";
+    });
+
+    /* =========================
        共通ユーティリティ
     ========================= */
     function generateState() {
@@ -542,14 +559,15 @@
 
       const redirectUri = `${redirectBase}/callback.html`;
 
-      // Appleは "Sign in with Apple JS" フレームワークを使うのが正式
-      // ここではリダイレクト方式で試す
+      // Issue #2: response_mode: form_post は Apple が POST で code を投げる方式だが、
+      // GitHub Pages (静的ホスティング) は POST を 405 で弾くため構造的に動かない。
+      // 他プロバイダと同じ query 方式で受ける（query は response_type=code のみ対応）。
       const params = new URLSearchParams({
         client_id: cfg.APPLE_CLIENT_ID,
         redirect_uri: redirectUri,
-        response_type: "code id_token",
+        response_type: "code",
         scope: "name email",
-        response_mode: "form_post",
+        response_mode: "query",
         state: state,
       });
 
