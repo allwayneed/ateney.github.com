@@ -19,6 +19,7 @@
   <script src="/auth.js"></script>
 
     <link rel="stylesheet" href="/common.css">
+  <link rel="stylesheet" href="/create/create.css">
   <style>
 /* CHARACTER GRID */
 
@@ -433,7 +434,7 @@
   </main>
 
   <script>
-/* +create トグル */
+    /* +create トグル */
     var createToggle = document.getElementById("createToggle");
     var createMenu = document.getElementById("createMenu");
     createToggle.addEventListener("click", function() {
@@ -443,15 +444,25 @@
     });
 
     /* =========================
-       CREATE — filter + item list
-    ========================= */
+       CREATE — 自分の作品一覧 (/api/me/*)
+       ========================= */
     var cfg = window.ATENEY_CONFIG || {};
     var apiBase = (cfg && cfg.API_BASE) || "";
+    var itemList = document.getElementById("itemList");
+    var filterTabs = document.querySelectorAll("#filter a");
+
+    var SVG_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
+    var SVG_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+
+    function getAuthHeaders() {
+      // auth.js: メモリ上の復号済みトークンから組み立てる (localStorageに平文は無い)
+      if (window.AteneyAuth) return AteneyAuth.getAuthHeaders();
+      return {};
+    }
+
     if (!apiBase) {
       itemList.innerHTML = '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">設定ファイル (config.js) が読み込めていません 😴</li>';
     }
-    var filterTabs = document.querySelectorAll("#filter a");
-    var itemList = document.getElementById("itemList");
 
     filterTabs.forEach(function(tab) {
       tab.addEventListener("click", function(e) {
@@ -462,11 +473,26 @@
       });
     });
 
-    function getAuthHeaders() {
-      // auth.js: メモリ上の復号済みトークンから組み立てる (localStorageに平文は無い)
-      if (window.AteneyAuth) return AteneyAuth.getAuthHeaders();
-      var token = localStorage.getItem("ateney-token");
-      return token ? { "Authorization": "Bearer " + token } : {};
+    function emptyMsg(type) {
+      return '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">' +
+        'まだ' + (type === "rag" ? "RAG" : type) + 'を作ってないよ。上のcreateから作れる ✨</li>';
+    }
+
+    function deleteItem(type, id, name) {
+      if (!confirm("「" + name + "」を削除する？ 巻き戻しはできないよ")) return;
+      fetch(apiBase + "/api/" + type + "/" + id, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      })
+        .then(function(res) {
+          if (res.status === 401) { AteneyAuth.logout(); location.replace("/login/"); return; }
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          loadItems(type);
+        })
+        .catch(function(err) {
+          console.error("deleteItem error:", err);
+          alert("削除できなかった 😴");
+        });
     }
 
     function loadItems(type) {
@@ -474,10 +500,11 @@
       for (var i = 0; i < 4; i++) skel += '<li><div class="item-skeleton"></div></li>';
       itemList.innerHTML = skel;
 
-      fetch(apiBase + "/api/" + type, { headers: getAuthHeaders() })
+      // 自分の作品だけ。全て認証必須エンドポイント
+      fetch(apiBase + "/api/me/" + type, { headers: getAuthHeaders() })
         .then(function(res) {
           if (res.status === 401) {
-            // トークンが無効/期限切れ。端末に残した認証情報を掃除して再ログインへ誘導する
+            // トークンが無効/期限切れ。掃除して再ログインへ誘導
             if (window.AteneyAuth) AteneyAuth.logout();
             throw new Error("401");
           }
@@ -485,39 +512,62 @@
           return res.json();
         })
         .then(function(data) {
-          var items = data.characters || data.scenes || data.documents || data.items || data || [];
+          var items = data.characters || data.scenes || data.rags || data.documents || data.items || data || [];
           if (!Array.isArray(items) || items.length === 0) {
-            itemList.innerHTML = '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">まだ何も作ってないよ ✨</li>';
+            itemList.innerHTML = emptyMsg(type);
             return;
           }
           itemList.innerHTML = "";
           items.forEach(function(item, i) {
+            var itemId = item.id || item.uuid || "";
+            var itemName = item.name || item.title || "Untitled";
             var li = document.createElement("li");
+
+            // 行本体 → 詳細ページ (404 routerが /{type}/{id}/ を処理)
             var a = document.createElement("a");
-            a.href = "/" + type + "/" + (item.id || item.uuid || "") + "/";
+            a.href = "/" + type + "/" + itemId + "/";
             var thumb = document.createElement("div");
             thumb.className = "item-thumb";
             if (item.avatar_url || item.image_url) {
               var img = document.createElement("img");
               img.src = item.avatar_url || item.image_url;
-              img.alt = item.name || item.title || "";
+              img.alt = itemName;
               img.loading = "lazy";
-              img.addEventListener("error", function() { thumb.textContent = (item.name||item.title||"?").charAt(0).toUpperCase(); });
+              img.addEventListener("error", function() { thumb.textContent = itemName.charAt(0).toUpperCase(); });
               thumb.appendChild(img);
             } else {
-              thumb.textContent = (item.name || item.title || "?").charAt(0).toUpperCase();
+              thumb.textContent = itemName.charAt(0).toUpperCase();
             }
             var name = document.createElement("span");
             name.className = "item-name";
-            name.textContent = item.name || item.title || "Untitled";
+            name.textContent = itemName;
             var tag = document.createElement("span");
             tag.className = "item-type";
             tag.textContent = type;
             a.appendChild(thumb); a.appendChild(name); a.appendChild(tag);
+
+            // 編集・削除
+            var actions = document.createElement("div");
+            actions.className = "item-actions";
+            var editBtn = document.createElement("a");
+            editBtn.className = "icon-btn";
+            editBtn.href = "/create/" + type + "/?id=" + encodeURIComponent(itemId);
+            editBtn.title = "編集";
+            editBtn.setAttribute("aria-label", itemName + "を編集");
+            editBtn.innerHTML = SVG_EDIT;
+            var delBtn = document.createElement("button");
+            delBtn.type = "button";
+            delBtn.className = "icon-btn danger";
+            delBtn.title = "削除";
+            delBtn.setAttribute("aria-label", itemName + "を削除");
+            delBtn.innerHTML = SVG_TRASH;
+            delBtn.addEventListener("click", function() { deleteItem(type, itemId, itemName); });
+            actions.appendChild(editBtn); actions.appendChild(delBtn);
+
             a.style.opacity = "0"; a.style.transform = "translateY(10px)";
             a.style.transition = "opacity 0.3s var(--ease), transform 0.3s var(--ease)";
             setTimeout(function() { a.style.opacity = "1"; a.style.transform = "translateY(0)"; }, i * 50);
-            li.appendChild(a); itemList.appendChild(li);
+            li.appendChild(a); li.appendChild(actions); itemList.appendChild(li);
           });
         })
         .catch(function(err) {
@@ -532,9 +582,12 @@
 
     // auth.js の復号が終わってから一覧を取る (トークン未復号のまま fetch しない)
     if (window.AteneyAuth && AteneyAuth.ready) {
-      AteneyAuth.ready.then(function() { loadItems("character"); });
+      AteneyAuth.ready.then(function() {
+        if (!AteneyAuth.isLoggedIn()) { location.replace("/login/"); return; }
+        loadItems("character");
+      });
     } else {
-      loadItems("character");
+      location.replace("/login/");
     }
     </script>
 </body>

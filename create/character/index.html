@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <!-- CSP: XSS時の被害を縮小する。script-src の unsafe-inline はこのサイトが
+       インラインスクリプト前提のため暫定許可 (外部originのスクリプト読込は禁止)。
+       connect-src の workers.dev は ateney-api のホスト。Worker移転時はここも更新。 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.ateney-ai.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="キャラクターを作成・編集する">
+  <meta name="robots" content="noindex">
+
+  <title>Create character - ateney</title>
+  <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+
+  <script src="/config.js"></script>
+  <script src="/auth.js"></script>
+
+  <link rel="stylesheet" href="/common.css">
+  <link rel="stylesheet" href="/create/create.css">
+</head>
+
+<body>
+  <script>
+    /* ダークモードFOUC防止 — 描画前にbodyへクラスを付与 (実体はcommon.js) */
+    try { if (localStorage.getItem("ateney-dark") === "1") document.body.classList.add("dark"); } catch (e) {}
+  </script>
+  <script src="/common.js"></script>
+
+  <!-- HEADER / OVERLAY / SLIDE MENU は common.js が注入する -->
+
+  <main class="main">
+    <div class="main-inner">
+      <h2 id="pageTitle">character を作る</h2>
+
+      <form id="editorForm" class="editor-form" novalidate>
+        <div class="field">
+          <label for="f-name">名前 (必須)</label>
+          <input type="text" id="f-name" name="name" maxlength="100" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-avatar">アバター画像URL</label>
+          <input type="url" id="f-avatar" name="avatar_url" maxlength="2048" placeholder="https://..." autocomplete="off">
+          <div class="hint">https:// ではじまる画像URL (未設定なら名前の頭文字が表示されます)</div>
+        </div>
+        <div class="field">
+          <label for="f-description">説明</label>
+          <textarea id="f-description" name="description" maxlength="5000" placeholder="このキャラの紹介。一覧カードにも出る短い文"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-personality">性格</label>
+          <textarea id="f-personality" name="personality" maxlength="20000"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-sp">system prompt</label>
+          <textarea id="f-sp" name="system_prompt" maxlength="20000"></textarea>
+          <div class="hint">このキャラの挙動を決める指示。公開ページには出ません (あなた本人とAPIだけが読めます)</div>
+        </div>
+        <div class="field">
+          <label for="f-greeting">あいさつ</label>
+          <textarea id="f-greeting" name="greeting" maxlength="20000" placeholder="最初のセリフ"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-tags">タグ</label>
+          <input type="text" id="f-tags" name="tags" maxlength="200" placeholder="カンマ区切り (例: 猫,先輩,ミステリー)" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-genre">ジャンル</label>
+          <input type="text" id="f-genre" name="genre" maxlength="100" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="check-row"><input type="checkbox" name="is_public"> 公開する (libraryに載ります)</label>
+        </div>
+        <p class="status" id="status"></p>
+        <div class="form-actions">
+          <a class="btn" href="/create/">戻る</a>
+          <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
+          <button type="button" class="btn btn-danger" id="deleteBtn" hidden>削除</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    var TYPE = "character";
+    var cfg = window.ATENEY_CONFIG || {};
+    var apiBase = (cfg && cfg.API_BASE) || "";
+    var form = document.getElementById("editorForm");
+    var statusEl = document.getElementById("status");
+    var id = new URLSearchParams(location.search).get("id");
+
+    function setStatus(msg, isError) {
+      statusEl.textContent = msg || "";
+      statusEl.className = "status" + (isError ? " error" : "");
+    }
+
+    function authFetch(path, opts) {
+      opts = opts || {};
+      opts.headers = Object.assign(
+        { "Content-Type": "application/json" },
+        AteneyAuth.getAuthHeaders(),
+        opts.headers || {}
+      );
+      return fetch(apiBase + path, opts);
+    }
+
+    function fill(data) {
+      for (var i = 0; i < form.elements.length; i++) {
+        var el = form.elements[i];
+        if (!el.name) continue;
+        if (el.type === "checkbox") { el.checked = !!data[el.name]; continue; }
+        if (el.name in data) el.value = data[el.name] == null ? "" : data[el.name];
+      }
+    }
+
+    function load() {
+      setStatus("読み込み中...");
+      authFetch("/api/me/" + TYPE + "/" + id)
+        .then(function (res) {
+          if (res.status === 401) { AteneyAuth.logout(); location.replace("/login/"); return null; }
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          if (!data) return;
+          document.getElementById("pageTitle").textContent = "character を編集";
+          fill(data[TYPE] || {});
+          setStatus("");
+        })
+        .catch(function () { setStatus("読み込めませんでした", true); });
+    }
+
+    function save(e) {
+      e.preventDefault();
+      var payload = {};
+      for (var i = 0; i < form.elements.length; i++) {
+        var el = form.elements[i];
+        if (!el.name) continue;
+        if (el.type === "checkbox") { payload.is_public = el.checked; continue; }
+        payload[el.name] = el.value.trim();
+      }
+      if (!payload.name) { setStatus("名前は必須だよ", true); return; }
+      document.getElementById("saveBtn").disabled = true;
+      setStatus("保存中...");
+      authFetch("/api/" + TYPE + (id ? "/" + id : ""), {
+        method: id ? "PUT" : "POST",
+        body: JSON.stringify(payload),
+      })
+        .then(function (res) {
+          if (res.status === 401) { AteneyAuth.logout(); location.replace("/login/"); return; }
+          if (!res.ok) return res.json().then(function (d) { throw new Error(d.error || "HTTP " + res.status); });
+          location.href = "/create/";
+        })
+        .catch(function (err) {
+          document.getElementById("saveBtn").disabled = false;
+          setStatus(err.message || "保存に失敗した", true);
+        });
+    }
+
+    function remove() {
+      if (!confirm("本当に削除する？ 巻き戻しはできないよ")) return;
+      authFetch("/api/" + TYPE + "/" + id, { method: "DELETE" })
+        .then(function (res) {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          location.href = "/create/";
+        })
+        .catch(function () { setStatus("削除に失敗した", true); });
+    }
+
+    form.addEventListener("submit", save);
+    document.getElementById("deleteBtn").addEventListener("click", remove);
+
+    /* 認証ゲート: ログイン後のみ編集できる (createは全て認証必須API) */
+    if (window.AteneyAuth) {
+      AteneyAuth.ready.then(function () {
+        if (!AteneyAuth.isLoggedIn()) { location.replace("/login/"); return; }
+        if (id) load();
+      });
+    } else {
+      location.replace("/login/");
+    }
+  </script>
+</body>
+</html>
