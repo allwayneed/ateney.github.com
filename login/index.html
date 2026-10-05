@@ -365,21 +365,11 @@
        CONFIG CHECK
     ========================= */
     const cfg = window.ATENEY_CONFIG || {};
-
-    log(`config loaded: ${JSON.stringify(cfg, null, 0)}`, "info");
-
     const hasGoogle = cfg.GOOGLE_CLIENT_ID && cfg.GOOGLE_CLIENT_ID !== "";
     const hasLine   = cfg.LINE_CHANNEL_ID && cfg.LINE_CHANNEL_ID !== "";
     const hasmicrosoft = cfg.MICROSOFT_CLIENT_ID && cfg.MICROSOFT_CLIENT_ID !== "";
     const hasyahoo = cfg.YAHOO_CLIENT_ID && cfg.YAHOO_CLIENT_ID !== "";
     const hasApple  = cfg.APPLE_CLIENT_ID && cfg.APPLE_CLIENT_ID !== "";
-
-    if (!hasGoogle) log("⚠ GOOGLE_CLIENT_ID 未設定", "err");
-    if (!hasLine)   log("⚠ LINE_CHANNEL_ID 未設定", "err");
-    if (!hasApple)  log("⚠ APPLE_CLIENT_ID 未設定", "err");
-    if (!hasyahoo)  log("⚠ YAHOO_CLIENT_ID 未設定", "err")
-    if (!hasmicrosoft) log("⚠ MICROSOFT_CLIENT_ID 未設定", "err")
-
     const redirectBase = cfg.REDIRECT_BASE || window.location.origin;
 
     /* =========================
@@ -414,7 +404,7 @@
     ========================= */
     document.getElementById("google-login").addEventListener("click", function () {
       if (!hasGoogle) {
-        log("Google: CLIENT_ID未設定", "err");
+        log("あれ？なんか開発者さんがミスしてるっぽい。", "err");
         return;
       }
 
@@ -433,10 +423,6 @@
         access_type: "online",
         prompt: "select_account",
       });
-
-      log("Google: リダイレクト中...", "info");
-      log(`redirect: ${redirectUri}`, "info");
-
       window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
     });
 
@@ -445,7 +431,7 @@
     ========================= */
     document.getElementById("line-login").addEventListener("click", async function() {
       if (!hasLine) {
-        log("LINE: CHANNEL_ID未設定", "err");
+        log("あれ？なんか開発者さんがミスしてるっぽい。", "err");
         return;
       }
 
@@ -468,10 +454,6 @@
         code_challenge: challenge,
         code_challenge_method: "S256",
       });
-
-      log(`LINE: リダイレクト中...`, "info");
-      log(`redirect: ${redirectUri}`, "info");
-
       window.location.href = `https://access.line.me/oauth2/v2.1/authorize?${params}`;
     });
     /* =========================
@@ -500,9 +482,6 @@
           code_challenge: challenge,
           code_challenge_method: "S256",
         });
-      
-        log("Microsoft: リダイレクト中...", "info");
-        log(`redirect: ${redirectUri}`, "info");
       
         window.location.href =
           `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params}`;
@@ -536,9 +515,6 @@
           code_challenge_method: "S256",
         });
       
-        log("Yahoo!: リダイレクト中...", "info");
-        log(`redirect: ${redirectUri}`, "info");
-      
         window.location.href =
           `https://auth.login.yahoo.co.jp/yconnect/v2/authorization?${params}`;
       
@@ -554,7 +530,7 @@
     ========================= */
     document.getElementById("apple-login").addEventListener("click", async function() {
       if (!hasApple) {
-        log("Apple: CLIENT_ID未設定", "err");
+        log("あれ？なんか開発者さんがミスしてるっぽい。", "err");
         return;
       }
 
@@ -576,13 +552,8 @@
         state: state,
       });
 
-      log(`Apple: リダイレクト中...`, "info");
-      log(`redirect: ${redirectUri}`, "info");
-
       window.location.href = `https://appleid.apple.com/auth/authorize?${params}`;
     });
-
-    log("=== 初期化完了 ===", "ok");
   </script>
 </body>
 </html>
