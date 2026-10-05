@@ -250,8 +250,26 @@
     async function loadrags() {
       showSkeletons(4);
 
+      // /api/rag は認証必須 (character/scene/packと違い非公開)。
+      // auth.js の復号が終わってから、ヘッダー付きで取る。
+      if (window.AteneyAuth && AteneyAuth.ready) {
+        try { await AteneyAuth.ready; } catch (e) {}
+      }
+
       try {
-        const response = await fetch(API_URL);
+        const headers = window.AteneyAuth ? AteneyAuth.getAuthHeaders() : {};
+        const response = await fetch(API_URL, { headers });
+
+        if (response.status === 401) {
+          // 未ログイン / 期限切れ → ログインへ誘導 (トークンが古ければ掃除しておく)
+          if (window.AteneyAuth && !AteneyAuth.isLoggedIn()) {
+            showState("🔐", 'RAGを見るには<a href="/login/" style="color:var(--accent);font-weight:600">ログイン</a>が必要です');
+          } else {
+            if (window.AteneyAuth) AteneyAuth.logout();
+            showState("🔒", "ログインの期限が切れました。<a href='/login/' style='color:var(--accent);font-weight:600'>再ログイン</a>してください");
+          }
+          return;
+        }
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
