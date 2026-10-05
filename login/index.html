@@ -204,6 +204,10 @@
       background: #000; border-color: #000; color: #fff;
     }
     body.dark .oauth-btn.apple { background: #fff; color: #000; }
+    /* Microsoft ブランドガイドライン: Segoe UI を使用 (Issue #12) */
+    .oauth-btn.microsoft {
+      font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif;
+    }
 
     .oauth-btn.loading { pointer-events: none; opacity: 0.7; }
     .spinner {
@@ -293,8 +297,9 @@
         Yahoo!でログイン
     </button>
     <button class="oauth-btn microsoft" id="microsoft-login">
-        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 21 21"><title>MS-SymbolLockup</title><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
-        Microsoftでログイン
+        <!-- Microsoft ブランドガイドライン: ロゴ両隣に12pxのクリアスペース必須 (styleで担保) -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 21 21" style="margin: 0 12px;"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+        Microsoftでサインイン
     </button>
     <!-- Apple -->
     <button class="oauth-btn apple" id="apple-login">
