@@ -245,7 +245,14 @@
     }
 
     /* Menu items */
-    .account-menu a {
+    .account-menu a,
+    .account-menu button {
+      background: none;
+      border-bottom: 1px solid var(--border);
+      border-top: none; border-left: none; border-right: none;
+      width: 100%;
+      font-family: inherit;
+      cursor: pointer;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -254,21 +261,23 @@
       text-decoration: none;
       font-size: 0.88rem;
       font-weight: 500;
-      border-bottom: 1px solid var(--border);
       transition: background 0.15s var(--ease), padding-left 0.2s var(--ease);
       -webkit-tap-highlight-color: transparent;
     }
 
-    .account-menu a:last-child {
+    .account-menu a:last-child,
+    .account-menu button:last-child {
       border-bottom: none;
     }
 
-    .account-menu a:hover {
+    .account-menu a:hover,
+    .account-menu button:hover {
       background: var(--bg-elevated);
       padding-left: 22px;
     }
 
-    .account-menu a svg {
+    .account-menu a svg,
+    .account-menu button svg {
       width: 18px;
       height: 18px;
       flex-shrink: 0;
@@ -276,15 +285,18 @@
       transition: opacity 0.2s var(--ease);
     }
 
-    .account-menu a:hover svg {
+    .account-menu a:hover svg,
+    .account-menu button:hover svg {
       opacity: 0.85;
     }
 
-    .account-menu a.logout {
+    .account-menu a.logout,
+    .account-menu button.logout {
       color: var(--danger);
     }
 
-    .account-menu a.logout svg {
+    .account-menu a.logout svg,
+    .account-menu button.logout svg {
       opacity: 0.7;
     }
 

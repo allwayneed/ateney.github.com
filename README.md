@@ -2,8 +2,7 @@
 
 ・開発者メモ
 ほかサービスを使ってるやつで守っていない規約
-- outlook:「Microsoftでサインイン」ではなく、「Microsoftでログイン」と書いている。お怒りメールが来たら修正します。
-- outlook: microsoftロゴの両隣に12pxピッタリの空白を開けていないかつ、フォントもおそらく「Segoe UI Regular」ではない
+- outlook: 「Microsoftでログイン」問題は Issue #12 で対応済み。「Microsoftでサインイン」文言・ロゴ12pxクリアスペース・Segoe UI を適用 (お怒りメールが来る前に対処)。
 
 ## 2026-10-02 規約・ポリシーまわり
 - term.md / privacy.md を真顔に全面リライト。旧💡コールアウトは全廃。

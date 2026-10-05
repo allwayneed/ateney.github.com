@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ateney</title>
+  <title>404 - ateney</title>
+  <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
   <script src="/config.js"></script>
     <link rel="stylesheet" href="/common.css">
   <style>
@@ -152,7 +153,7 @@
     var path = window.location.pathname;
     var content = document.getElementById("content");
     var cfg = window.ATENEY_CONFIG || {};
-    var apiBase = cfg.API_BASE || "https://ateney-api.ateney-ai.workers.dev";
+    var apiBase = (cfg && cfg.API_BASE) || "";
 
     // UUID正規表現 — 12345678-1234-1234-1234-123456789abc
     var uuidRegex = /^\/character\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/?$/;
@@ -327,6 +328,72 @@
       setText(document.getElementById("char-greeting"), c.greeting);
     }
 
+    function renderRAG(c) {
+      document.title = (c.name || c.title || "RAG") + " - ateney";
+
+      // アバター（キャラと同じく safeAvatarUrl で http(s) のみ許可）
+      var avatarHtml = "";
+      if (safeAvatarUrl(c.avatar_url || c.image_url)) {
+        avatarHtml = '<img class="char-avatar-img" src="' + escapeHtml(c.avatar_url || c.image_url) + '" alt="' + escapeHtml(c.name || c.title || "rag") + '">';
+      } else {
+        avatarHtml = '<div class="char-avatar-fallback">' + escapeHtml(((c.name || c.title || "?").charAt(0))) + '</div>';
+      }
+
+      var html = '<div class="char-detail">';
+      html += '<a href="/rag/" class="char-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>RAG一覧</a>';
+      html += '<div class="char-header">';
+      html += '<div class="char-avatar">' + avatarHtml + '</div>';
+      html += '<div class="char-title"><h1 id="char-name"></h1></div>';
+      html += '</div>';
+      if (c.description) {
+        html += '<div class="char-section"><h2>説明</h2><p id="char-desc"></p></div>';
+      }
+      html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>ライブラリに追加</button></div>';
+      html += '</div>';
+      content.innerHTML = html;
+
+      // 画像読み込み失敗時のフォールバック
+      var img = content.querySelector(".char-avatar-img");
+      if (img) {
+        img.addEventListener("error", function() {
+          var wrap = img.parentElement;
+          wrap.innerHTML = "";
+          var fb = document.createElement("div");
+          fb.className = "char-avatar-fallback";
+          fb.textContent = (c.name || c.title || "?").charAt(0);
+          wrap.appendChild(fb);
+        });
+      }
+
+      setText(document.getElementById("char-name"), c.name || c.title);
+      setText(document.getElementById("char-desc"), c.description);
+    }
+
+    async function loadrag(uuid) {
+      startLoadingRotation();
+      try {
+        var res = await fetch(apiBase + "/api/rag/" + uuid);
+
+        if (res.status === 404) {
+          stopLoadingRotation();
+          showNotFound();
+          return;
+        }
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+
+        var data = await res.json();
+        stopLoadingRotation();
+        var r = data.rag || data.document || data;
+        renderRAG(r);
+      } catch (e) {
+        console.error("[ateney] Failed to load rag:", e);
+        stopLoadingRotation();
+        showError("RAGを読み込めませんでした: " + e.message);
+      }
+    }
+
     async function loadCharacter(uuid) {
       startLoadingRotation();
       try {
@@ -391,16 +458,29 @@
 
     function router() {
       var route = getRoute();
-    
-      if (route.name === "character" && route.id) {
-        loadCharacter(route.id);
+
+      if (!apiBase) {
+        // config.js が読み込めていない環境 (Issue #4: URLはconfig.jsが唯一の発生源)
+        document.title = "エラー - ateney";
+        content.innerHTML =
+          '<div class="error-state">' +
+          '<p>設定ファイル (config.js) が読み込めていません。</p>' +
+          '<p style="margin-top:16px"><a href="/" style="color:var(--accent);text-decoration:none;font-weight:500">ホームに戻る</a></p>' +
+          '</div>';
         return;
       }
-      if (route.name === "scene" && route.id) {
-        loadscene(route.id);
+    
+      var detailLoaders = {
+        character: loadCharacter,
+        scene: loadscene,
+        rag: loadrag
+      };
+
+      if (route.name && route.id && detailLoaders[route.name]) {
+        detailLoaders[route.name](route.id);
         return;
       }
-    
+
       showNotFound();
     }
 
