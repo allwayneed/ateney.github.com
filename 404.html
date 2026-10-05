@@ -379,7 +379,9 @@
     async function loadrag(uuid) {
       startLoadingRotation();
       try {
-        var res = await fetch(apiBase + "/api/rag/" + uuid);
+        // /api/rag は認証必須なので、ログイン済みなら Authorization を付ける
+        var headers = window.AteneyAuth ? AteneyAuth.getAuthHeaders() : {};
+        var res = await fetch(apiBase + "/api/rag/" + uuid, { headers: headers });
 
         if (res.status === 404) {
           stopLoadingRotation();
