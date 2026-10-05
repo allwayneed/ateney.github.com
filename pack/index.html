@@ -3,6 +3,12 @@
 
 <head>
   <meta charset="UTF-8">
+  <!-- CSP: XSS時の被害を縮小する。script-src の unsafe-inline はこのサイトが
+       インラインスクリプト前提のため暫定許可 (外部originのスクリプト読込は禁止)。
+       connect-src の workers.dev は ateney-api のホスト。Worker移転時はここも更新。
+       (meta CSP は HTTPヘッダ版と違い frame-ancestors 無効) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.ateney-ai.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="パックの一覧">
 
