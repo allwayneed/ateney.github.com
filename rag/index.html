@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>ateney</title>
+  <script src="/config.js"></script>
 
     <link rel="stylesheet" href="/common.css">
   <style>
@@ -156,7 +157,8 @@
        rag LIST
     ========================= */
 
-    const API_URL = "https://ateney-api.ateney-ai.workers.dev/api/rag";
+    const cfg = window.ATENEY_CONFIG || {};
+    const API_URL = (cfg.API_BASE || "") + "/api/rag";
     const container = document.getElementById("rag-list");
 
     function showSkeletons(count = 4) {

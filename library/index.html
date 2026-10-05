@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>ateney</title>
+  <script src="/config.js"></script>
 
     <link rel="stylesheet" href="/common.css">
   <style>
@@ -156,8 +157,9 @@
        library LIST
     ========================= */
 
-    // TODO: Library用APIエンドポイントができたらここに設定
-    // const API_URL = ".../api/library";
+    // Issue #5: Worker側に /api/library が生えたら loadLibrarys() を有効化する
+    const cfg = window.ATENEY_CONFIG || {};
+    const API_URL = (cfg.API_BASE || "") + "/api/library";
     const container = document.getElementById("library-list");
 
     function showSkeletons(count = 4) {

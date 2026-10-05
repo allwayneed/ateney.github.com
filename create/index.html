@@ -437,7 +437,10 @@
        CREATE — filter + item list
     ========================= */
     var cfg = window.ATENEY_CONFIG || {};
-    var apiBase = cfg.API_BASE || "https://ateney-api.ateney-ai.workers.dev";
+    var apiBase = (cfg && cfg.API_BASE) || "";
+    if (!apiBase) {
+      itemList.innerHTML = '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">設定ファイル (config.js) が読み込めていません 😴</li>';
+    }
     var filterTabs = document.querySelectorAll("#filter a");
     var itemList = document.getElementById("itemList");
 

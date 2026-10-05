@@ -152,7 +152,7 @@
     var path = window.location.pathname;
     var content = document.getElementById("content");
     var cfg = window.ATENEY_CONFIG || {};
-    var apiBase = cfg.API_BASE || "https://ateney-api.ateney-ai.workers.dev";
+    var apiBase = (cfg && cfg.API_BASE) || "";
 
     // UUID正規表現 — 12345678-1234-1234-1234-123456789abc
     var uuidRegex = /^\/character\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/?$/;
@@ -391,6 +391,17 @@
 
     function router() {
       var route = getRoute();
+
+      if (!apiBase) {
+        // config.js が読み込めていない環境 (Issue #4: URLはconfig.jsが唯一の発生源)
+        document.title = "エラー - ateney";
+        content.innerHTML =
+          '<div class="error-state">' +
+          '<p>設定ファイル (config.js) が読み込めていません。</p>' +
+          '<p style="margin-top:16px"><a href="/" style="color:var(--accent);text-decoration:none;font-weight:500">ホームに戻る</a></p>' +
+          '</div>';
+        return;
+      }
     
       if (route.name === "character" && route.id) {
         loadCharacter(route.id);
