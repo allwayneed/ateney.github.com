@@ -1,4 +1,4 @@
-# ateney.github.com
+# ateney.github.com、開発メモ（一般人の方は回れ右！！！！）
 
 ・開発者メモ
 ほかサービスを使ってるやつで守っていない規約
