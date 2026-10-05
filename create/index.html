@@ -3,6 +3,12 @@
 
 <head>
   <meta charset="UTF-8">
+  <!-- CSP: XSS時の被害を縮小する。script-src の unsafe-inline はこのサイトが
+       インラインスクリプト前提のため暫定許可 (外部originのスクリプト読込は禁止)。
+       connect-src の workers.dev は ateney-api のホスト。Worker移転時はここも更新。
+       (meta CSP は HTTPヘッダ版と違い frame-ancestors 無効) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.ateney-ai.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="キャラクター・シーン・RAGを作成する">
 
@@ -10,6 +16,7 @@
   <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 
   <script src="/config.js"></script>
+  <script src="/auth.js"></script>
 
     <link rel="stylesheet" href="/common.css">
   <style>
@@ -456,6 +463,8 @@
     });
 
     function getAuthHeaders() {
+      // auth.js: メモリ上の復号済みトークンから組み立てる (localStorageに平文は無い)
+      if (window.AteneyAuth) return AteneyAuth.getAuthHeaders();
       var token = localStorage.getItem("ateney-token");
       return token ? { "Authorization": "Bearer " + token } : {};
     }
@@ -466,7 +475,15 @@
       itemList.innerHTML = skel;
 
       fetch(apiBase + "/api/" + type, { headers: getAuthHeaders() })
-        .then(function(res) { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+        .then(function(res) {
+          if (res.status === 401) {
+            // トークンが無効/期限切れ。端末に残した認証情報を掃除して再ログインへ誘導する
+            if (window.AteneyAuth) AteneyAuth.logout();
+            throw new Error("401");
+          }
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.json();
+        })
         .then(function(data) {
           var items = data.characters || data.scenes || data.documents || data.items || data || [];
           if (!Array.isArray(items) || items.length === 0) {
@@ -505,11 +522,20 @@
         })
         .catch(function(err) {
           console.error("loadItems error:", err);
-          itemList.innerHTML = '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">読み込めなかった 😴</li>';
+          if (err.message === "401") {
+            itemList.innerHTML = '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">ログインの期限が切れました。もう一度ログインしてください 🔒</li>';
+          } else {
+            itemList.innerHTML = '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">読み込めなかった 😴</li>';
+          }
         });
     }
 
-    loadItems("character");
+    // auth.js の復号が終わってから一覧を取る (トークン未復号のまま fetch しない)
+    if (window.AteneyAuth && AteneyAuth.ready) {
+      AteneyAuth.ready.then(function() { loadItems("character"); });
+    } else {
+      loadItems("character");
+    }
     </script>
 </body>
 </html>

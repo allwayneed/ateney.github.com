@@ -147,14 +147,12 @@
 
     // --- Auth state ---
     function getAuthUser() {
+      // ateney-user は UI表示用の最小限の情報 (name/id/provider) のみ。
+      // 認証情報そのもの (JWT) は auth.js が暗号化して持っているため、ここでは触らない。
       try {
         const raw = localStorage.getItem("ateney-user");
         if (raw) return JSON.parse(raw);
       } catch (e) {}
-      // Also check for just a token
-      if (localStorage.getItem("ateney-token")) {
-        return { name: "ユーザー", id: "ログイン中" };
-      }
       return null;
     }
 
@@ -207,8 +205,14 @@
         if (logoutBtn) {
           logoutBtn.addEventListener("click", (e) => {
             e.preventDefault();
-            localStorage.removeItem("ateney-user");
-            localStorage.removeItem("ateney-token");
+            // auth.js 経由で暗号化トークンも含めて全掃除 (auth.js 未読み込み環境向けフォールバック付き)
+            if (window.AteneyAuth) {
+              AteneyAuth.logout();
+            } else {
+              localStorage.removeItem("ateney-user");
+              localStorage.removeItem("ateney-token");
+              localStorage.removeItem("ateney-token-v2");
+            }
             window.location.href = "/login/";
           });
         }
