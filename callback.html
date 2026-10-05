@@ -6,6 +6,7 @@
   <title>認証中 - ateney</title>
   <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
   <script src="/config.js"></script>
+  <script src="/auth.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -91,26 +92,26 @@
     /* =========================
        認証成功後の共通処理
        Workerから { token, user } が返ってくる
-       token (JWT) → ateney-token として保存（APIのAuthorizationヘッダー用）
-       user        → ateney-user  として保存（UI表示用）
+       token (JWT) → auth.js 経由で AES-GCM 暗号化して保存 (localStorageに平文は置かない)
+       user        → UI表示に必要な最小限 (name/id/provider) のみ ateney-user に保存
     ========================= */
-    function saveAuthResult(data, provider) {
-      // JWTは別途保存 — API呼ぶ時に Authorization: Bearer <token> で使う
-      if (data.token) {
-        localStorage.setItem("ateney-token", data.token);
-      }
-
-      // ユーザー情報は表示用
+    async function saveAuthResult(data, provider) {
+      // JWT は auth.js (AES-GCM暗号化 + 非抽出可能鍵) で保存する。
+      // localStorage に平文トークンを置かない (XSS持ち出し対策)。
+      // ユーザー情報は UI 表示に必要な最小限 (name/id/provider) のみ保存する (PII最小化)。
       const u = data.user || {};
-      localStorage.setItem("ateney-user", JSON.stringify({
+      const user = {
         name: u.name || data.name || "",
         id: u.id || data.id || "",
-        email: u.email || "",
-        avatar: u.avatar_url || data.avatar || "",
-        username: u.username || "",
-        provider: provider,
-        needs_onboarding: u.needs_onboarding || false,
-      }));
+        provider: provider
+      };
+
+      try {
+        await AteneyAuth.saveAuth(data.token, user);
+      } catch (err) {
+        setError("ログイン情報の保存に失敗しました: " + err.message);
+        return;
+      }
 
       logLine("認証成功: provider=" + provider);
       logLine("JWT保存: " + (!!data.token));
@@ -192,7 +193,7 @@
             }
 
             const data = await res.json();
-            saveAuthResult(data, "line");
+            await saveAuthResult(data, "line");
           } catch (err) {
             setError("LINE認証エラー: " + err.message);
           }
@@ -219,7 +220,7 @@
             }
 
             const data = await res.json();
-            saveAuthResult(data, "google");
+            await saveAuthResult(data, "google");
           } catch (err) {
             setError("Google認証エラー: " + err.message);
           }
@@ -250,7 +251,7 @@
               throw new Error("API応答エラー (" + res.status + "): " + errBody);
             }
             const data = await res.json();
-            saveAuthResult(data, "microsoft");
+            await saveAuthResult(data, "microsoft");
           } catch (err) {
             setError("エラー出たぁ！バ〇ルドームも出たぁ！！！: " + err.message);
           }
@@ -276,7 +277,7 @@
               throw new Error("API応答エラー (" + res.status + "): " + errBody);
             }
             const data = await res.json();
-            saveAuthResult(data, "yahoo");
+            await saveAuthResult(data, "yahoo");
           } catch (err) {
             setError("エラー出たぁ！バ〇ルドームも出たぁ！！！: " + err.message);
           }
@@ -300,7 +301,7 @@
               throw new Error("Worker応答エラー (" + res.status + "): " + errBody);
             }
             const data = await res.json();
-            saveAuthResult(data, "apple");
+            await saveAuthResult(data, "apple");
           } catch (err) {
             setError("Apple認証エラー: " + err.message);
           }

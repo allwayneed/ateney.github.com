@@ -152,6 +152,7 @@
     /* ダークモードFOUC防止 — 描画前にbodyへクラスを付与 (実体はcommon.js) */
     try { if (localStorage.getItem("ateney-dark") === "1") document.body.classList.add("dark"); } catch (e) {}
   </script>
+  <script src="/auth.js"></script>
   <script src="/common.js"></script>
 
   <!-- HEADER / OVERLAY / SLIDE MENU は common.js が注入する (Issue #9) -->
