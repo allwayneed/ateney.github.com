@@ -4,150 +4,111 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title>ACCESS DENIED</title>
+  <title>I watch you.</title>
   <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
   <style>
-    /* いたずらページ。雰囲気を出すためだけの黒い端末。実データの取得は一切していない。 */
+    /* いたずらページ。前プロジェクトの血を引く「止まれ」方式。
+       白背景に赤枠の逆三角形で I watch you. を出し、
+       5秒後に不協和音のビープで強制的に / へ戻す。
+       実データの取得は一切していない。外部通信も入力欄も無し。 */
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      background: #0a0a0a;
-      color: #33ff66;
-      font-family: "Courier New", Courier, monospace;
+      background: #fff;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-direction: column;
+      gap: 28px;
       padding: 24px;
     }
 
-    .terminal {
-      width: 100%;
-      max-width: 640px;
-      border: 1px solid #1d3a24;
-      background: #0d0f0d;
-      border-radius: 6px;
-      overflow: hidden;
-      box-shadow: 0 0 40px rgba(51, 255, 102, 0.08);
+    .sign {
+      width: min(70vw, 340px);
+      height: auto;
+      /* 置物みたいに静かに見つめてくる揺れ */
+      animation: stare 4s ease-in-out infinite;
     }
 
-    .term-bar {
-      display: flex;
-      gap: 6px;
-      padding: 10px 12px;
-      background: #131613;
-      border-bottom: 1px solid #1d3a24;
+    @keyframes stare {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.015); }
     }
 
-    .term-bar span {
-      width: 10px; height: 10px; border-radius: 50%;
-      background: #1d3a24;
-    }
-
-    .term-body {
-      padding: 20px 22px 28px;
-      font-size: 0.85rem;
-      line-height: 1.8;
-      letter-spacing: 0.04em;
-    }
-
-    .line { white-space: pre-wrap; word-break: break-all; }
-
-    .red { color: #ff4757; }
-    .dim { color: #1f7a3d; }
-    .yellow { color: #ffd32a; }
-
-    .cursor {
-      display: inline-block;
-      width: 8px; height: 15px;
-      background: #33ff66;
-      vertical-align: -2px;
-      animation: blink 1s steps(1) infinite;
-    }
-
-    @keyframes blink { 50% { opacity: 0; } }
-
-    .reveal {
-      display: none;
-      margin-top: 20px;
-      padding-top: 18px;
-      border-top: 1px dashed #1d3a24;
-      font-size: 0.82rem;
-      line-height: 2;
-    }
-
-    .reveal a {
-      color: #ffd32a;
-      text-decoration: underline;
-    }
-
-    .stamp {
-      margin-top: 14px;
-      display: inline-block;
-      border: 1px solid #1d3a24;
-      padding: 2px 10px;
+    .caption {
+      font-family: "Courier New", Courier, monospace;
+      color: #999;
       font-size: 0.72rem;
-      color: #1f7a3d;
+      letter-spacing: 0.08em;
+      text-align: center;
+      line-height: 1.9;
     }
+
+    .caption a { color: #b00; text-decoration: none; }
+
+    .no-js-hide { display: none; }
   </style>
 </head>
 <body>
-  <div class="terminal" role="main">
-    <div class="term-bar"><span></span><span></span><span></span></div>
-    <div class="term-body" id="log">
-      <div class="line reveal" id="reveal">
-        <span class="yellow">…なんてね。</span>
-        ここはダミーだよ。よく見つけたね、/admin/ なんて。
-        でも ateney には管理者画面も管理者パスワードも存在しない。
-        開発者は一人だけで、あとは API の向こうで働いてる AI が少しだけ。
-        君の痕跡も何も記録してないし、もともと記録する物すら無い。
+  <!-- 止まれ (道路標識方式・逆三角形・赤枠白地) -->
+  <svg class="sign" viewBox="0 0 300 262" role="img" aria-label="I watch you. 止まれ">
+    <polygon points="150,14 286,246 14,246"
+             fill="#fff" stroke="#d70035" stroke-width="20" stroke-linejoin="round"/>
+    <text x="150" y="152" text-anchor="middle" fill="#d70035"
+          font-size="38" font-weight="700" font-family="'Courier New', monospace">I watch</text>
+    <text x="150" y="196" text-anchor="middle" fill="#d70035"
+          font-size="38" font-weight="700" font-family="'Courier New', monospace">you.</text>
+  </svg>
 
-        もし本気で脆弱性を探してくれてるなら、それは嬉しい話だ。
-        見つけたら教えてほしい → <a href="mailto:security@ateney.f5.si">security@ateney.f5.si</a>
-        窓口は <a href="/.well-known/security.txt">/.well-known/security.txt</a> にも書いてある。
-
-        <a href="/">← 表に戻る</a>
-        <br><span class="stamp">ateney — prank page, nothing here</span>
-      </div>
-    </div>
-  </div>
+  <p class="caption">
+    5秒後に強制送還されます。<br>
+    本気で穴を探してるなら →
+    <a href="mailto:security@ateney.f5.si">security@ateney.f5.si</a> /
+    <a href="/.well-known/security.txt">security.txt</a>
+  </p>
 
   <script>
-    // ただの演出。fetch も location も何も触らない、文字を順に出すだけ。
     (function () {
-      var lines = [
-        { text: "> GET /admin/ -- attempting access...", cls: "dim" },
-        { text: "[ !! ] UNAUTHORIZED CONNECTION DETECTED", cls: "red" },
-        { text: "[ !! ] SECURITY LEVEL: OMEGA", cls: "red" },
-        { text: "[ .. ] tracing origin...", cls: "" },
-        { text: "[ .. ] isolating hostile entity...", cls: "" },
-        { text: "[ OK ] entity classified: いたずら好きな君", cls: "yellow" },
-        { text: "[ .. ] deploying countermeasure...", cls: "" }
-      ];
-      var log = document.getElementById("log");
-      var reveal = document.getElementById("reveal");
+      /* 不協和音: 半音クラッシュ (440Hz / 466.16Hz) + その下のオクターブ。
+         警報っぽさを出すため sawtooth で。 */
+      var ctx = null;
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) ctx = new AC();
+      } catch (e) {}
 
-      var i = 0;
-      function nextLine() {
-        if (i < lines.length) {
-          var d = document.createElement("div");
-          d.className = "line " + (lines[i].cls || "");
-          log.insertBefore(d, reveal);
-          var j = 0;
-          (function type() {
-            if (j < lines[i].text.length) {
-              d.textContent = lines[i].text.slice(0, ++j);
-              setTimeout(type, 14);
-            } else {
-              i++;
-              setTimeout(nextLine, 260);
-            }
-          })();
-        } else {
-          reveal.style.display = "block";
-        }
+      // 自動再生ブロック対策: 何かしら操作されていれば音が出る
+      ["pointerdown", "keydown", "touchstart"].forEach(function (ev) {
+        document.addEventListener(ev, function () {
+          if (ctx && ctx.state === "suspended") ctx.resume();
+        }, { once: false });
+      });
+
+      function discordBeep() {
+        if (!ctx || ctx.state !== "running") return;
+        var t = ctx.currentTime;
+        [440, 466.16, 233.08].forEach(function (f) {
+          var o = ctx.createOscillator();
+          var g = ctx.createGain();
+          o.type = "sawtooth";
+          o.frequency.value = f;
+          g.gain.setValueAtTime(0.12, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.start(t);
+          o.stop(t + 1.1);
+        });
       }
-      nextLine();
+
+      // 5秒後: 不協和音 → 強制的に / へ (replace なので戻るボタンでも戻れない)
+      setTimeout(function () {
+        discordBeep();
+        setTimeout(function () {
+          window.location.replace("/");
+        }, 1000);
+      }, 5000);
     })();
   </script>
 </body>
