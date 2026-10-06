@@ -398,6 +398,16 @@
 
   
   
+
+    /* 20件ブロック読み込みの「もっと見る」 */
+    .load-more { display: flex; justify-content: center; padding: 8px 0; }
+    .load-more button {
+      font-family: inherit; font-size: 0.85rem; cursor: pointer;
+      padding: 10px 28px; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--bg-elevated);
+      color: var(--text-primary); transition: all 0.2s var(--ease);
+    }
+    .load-more button:hover { border-color: var(--accent); transform: translateY(-1px); }
   </style>
 </head>
 
@@ -495,13 +505,19 @@
         });
     }
 
-    function loadItems(type) {
-      var skel = "";
-      for (var i = 0; i < 4; i++) skel += '<li><div class="item-skeleton"></div></li>';
-      itemList.innerHTML = skel;
+    // 20件ブロック読み込み (API側ページング ?page=N。デフォルト20/block)
+    var listState = { character: { page: 1 }, scene: { page: 1 }, rag: { page: 1 } };
+
+    function loadItems(type, append) {
+      if (!append) {
+        listState[type] = { page: 1 };
+        var skel = "";
+        for (var i = 0; i < 4; i++) skel += '<li><div class="item-skeleton"></div></li>';
+        itemList.innerHTML = skel;
+      }
 
       // 自分の作品だけ。全て認証必須エンドポイント
-      fetch(apiBase + "/api/me/" + type, { headers: getAuthHeaders() })
+      fetch(apiBase + "/api/me/" + type + "?page=" + listState[type].page, { headers: getAuthHeaders() })
         .then(function(res) {
           if (res.status === 401) {
             // トークンが無効/期限切れ。掃除して再ログインへ誘導
@@ -513,11 +529,12 @@
         })
         .then(function(data) {
           var items = data.characters || data.scenes || data.rags || data.documents || data.items || data || [];
+          var pg = data.pagination || {};
+          if (!append) itemList.innerHTML = "";
           if (!Array.isArray(items) || items.length === 0) {
-            itemList.innerHTML = emptyMsg(type);
+            if (!append) itemList.innerHTML = emptyMsg(type);
             return;
           }
-          itemList.innerHTML = "";
           items.forEach(function(item, i) {
             var itemId = item.id || item.uuid || "";
             var itemName = item.name || item.title || "Untitled";
@@ -569,6 +586,22 @@
             setTimeout(function() { a.style.opacity = "1"; a.style.transform = "translateY(0)"; }, i * 50);
             li.appendChild(a); li.appendChild(actions); itemList.appendChild(li);
           });
+          // まだ残りがあれば「もっと見る」
+          if (pg.has_more) {
+            var shown = (pg.page - 1) * (pg.limit || 20) + items.length;
+            var more = document.createElement("li");
+            more.className = "load-more";
+            var moreBtn = document.createElement("button");
+            moreBtn.type = "button";
+            moreBtn.textContent = "もっと見る (あと" + (pg.total - shown) + "件)";
+            moreBtn.addEventListener("click", function() {
+              listState[type].page++;
+              more.remove();
+              loadItems(type, true);
+            });
+            more.appendChild(moreBtn);
+            itemList.appendChild(more);
+          }
         })
         .catch(function(err) {
           console.error("loadItems error:", err);

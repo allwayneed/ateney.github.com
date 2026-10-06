@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <!-- CSP: XSS時の被害を縮小する。script-src の unsafe-inline はこのサイトが
+       インラインスクリプト前提のため暫定許可 (外部originのスクリプト読込は禁止)。
+       connect-src の workers.dev は ateney-api のホスト。Worker移転時はここも更新。 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.ateney-ai.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="アカウント情報の確認">
+  <meta name="robots" content="noindex">
+
+  <title>Account - ateney</title>
+  <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+
+  <script src="/config.js"></script>
+  <script src="/auth.js"></script>
+
+  <link rel="stylesheet" href="/common.css">
+  <link rel="stylesheet" href="/create/create.css">
+  <style>
+    .account-main {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 48px 20px 96px;
+    }
+
+    .account-main h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    .account-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--bg-elevated);
+      padding: 28px;
+    }
+
+    .profile-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .profile-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .profile-avatar svg {
+      width: 30px;
+      height: 30px;
+      opacity: 0.7;
+    }
+
+    .profile-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      word-break: break-all;
+    }
+
+    .provider-badge {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 0.72rem;
+      padding: 2px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .account-rows {
+      margin-top: 24px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+      display: grid;
+      gap: 10px;
+      font-size: 0.88rem;
+    }
+
+    .account-rows .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+    }
+
+    .account-rows .row .label {
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .account-rows .row .value {
+      word-break: break-all;
+      text-align: right;
+    }
+
+    .account-rows code {
+      font-size: 0.8rem;
+    }
+
+    .stats {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .stat-tile {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 12px;
+      text-align: center;
+      background: var(--bg);
+      transition: all 0.2s var(--ease);
+    }
+
+    .stat-tile:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .stat-tile .num {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .stat-tile .cap {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .stat-tile.loading .num {
+      color: var(--text-secondary);
+      opacity: 0.5;
+    }
+
+    .account-actions {
+      margin-top: 24px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .guest-card {
+      text-align: center;
+      padding: 48px 24px;
+    }
+
+    .guest-card p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <script>
+    /* ダークモードFOUC防止 — 描画前にbodyへクラスを付与 (実体はcommon.js) */
+    try { if (localStorage.getItem("ateney-dark") === "1") document.body.classList.add("dark"); } catch (e) {}
+  </script>
+  <script src="/common.js"></script>
+
+  <!-- HEADER / OVERLAY / SLIDE MENU は common.js が注入する -->
+
+  <main class="account-main">
+    <h2>アカウント</h2>
+
+    <!-- 未ログイン -->
+    <div class="account-card guest-card" id="guestCard" hidden>
+      <p>ログインするとアカウント情報と自分の作品が見られるよ</p>
+      <a class="btn btn-primary" href="/login/">ログイン</a>
+    </div>
+
+    <!-- ログイン済み -->
+    <div class="account-card" id="accountCard" hidden>
+      <div class="profile-row">
+        <div class="profile-avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 21c0-4 4-7 8-7s8 3 8 7"/>
+          </svg>
+        </div>
+        <div>
+          <div class="profile-name" id="userName"></div>
+          <span class="provider-badge" id="providerBadge"></span>
+        </div>
+      </div>
+
+      <div class="account-rows">
+        <div class="row">
+          <span class="label">ユーザーID</span>
+          <span class="value"><code id="userId"></code></span>
+        </div>
+        <div class="row">
+          <span class="label">ログイン方法</span>
+          <span class="value" id="providerText"></span>
+        </div>
+      </div>
+
+      <div class="stats">
+        <a class="stat-tile loading" href="/create/" id="charTile">
+          <span class="num" id="charCount">…</span>
+          <span class="cap">キャラクター</span>
+        </a>
+        <a class="stat-tile loading" href="/create/" id="sceneTile">
+          <span class="num" id="sceneCount">…</span>
+          <span class="cap">シーン</span>
+        </a>
+        <a class="stat-tile loading" href="/create/" id="ragTile">
+          <span class="num" id="ragCount">…</span>
+          <span class="cap">RAG</span>
+        </a>
+      </div>
+
+      <div class="account-actions">
+        <a class="btn" href="/create/">作品を管理</a>
+        <button type="button" class="btn btn-danger" id="logoutBtn">ログアウト</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (async function () {
+      "use strict";
+
+      var cfg = window.ATENEY_CONFIG || {};
+      var apiBase = cfg.API_BASE || "";
+
+      // auth.js の復号完了を待つ (isLoggedIn はメモリ上のトークン依存)
+      if (window.AteneyAuth && AteneyAuth.ready) {
+        try { await AteneyAuth.ready; } catch (e) {}
+      }
+
+      var loggedIn = !!(window.AteneyAuth && AteneyAuth.isLoggedIn());
+      var user = (window.AteneyAuth && AteneyAuth.getUser()) || {};
+
+      var PROVIDERS = {
+        line: "LINE",
+        google: "Google",
+        microsoft: "Microsoft",
+        yahoo: "Yahoo! JAPAN",
+        apple: "Apple",
+      };
+
+      var guestCard = document.getElementById("guestCard");
+      var accountCard = document.getElementById("accountCard");
+
+      if (!loggedIn) {
+        guestCard.hidden = false;
+        return;
+      }
+
+      accountCard.hidden = false;
+
+      // 動的値はすべて textContent (XSS対策。innerHTMLには静的構造のみ)
+      document.getElementById("userName").textContent = user.name || "ユーザー";
+      document.getElementById("userId").textContent = user.id || "";
+      var providerLabel = PROVIDERS[user.provider] || (user.provider || "不明");
+      document.getElementById("providerBadge").textContent = providerLabel;
+      document.getElementById("providerText").textContent = providerLabel;
+
+      // 作品数 (APIのpagination.total。limit=1で総数だけ安く取る)
+      if (apiBase) {
+        var headers = AteneyAuth.getAuthHeaders();
+        [
+          ["character", "charCount", "charTile"],
+          ["scene", "sceneCount", "sceneTile"],
+          ["rag", "ragCount", "ragTile"],
+        ].forEach(function (pair) {
+          var type = pair[0], numId = pair[1], tileId = pair[2];
+          fetch(apiBase + "/api/me/" + type + "?limit=1", { headers: headers })
+            .then(function (res) {
+              if (!res.ok) throw new Error("HTTP " + res.status);
+              return res.json();
+            })
+            .then(function (data) {
+              var total = data.pagination ? data.pagination.total : null;
+              document.getElementById(numId).textContent =
+                typeof total === "number" ? String(total) : "—";
+              document.getElementById(tileId).classList.remove("loading");
+            })
+            .catch(function () {
+              document.getElementById(numId).textContent = "—";
+              document.getElementById(tileId).classList.remove("loading");
+            });
+        });
+      } else {
+        ["charCount", "sceneCount", "ragCount"].forEach(function (id) {
+          document.getElementById(id).textContent = "—";
+        });
+      }
+
+      // ログアウト (common.js のドロップダウンと同一処理)
+      document.getElementById("logoutBtn").addEventListener("click", function () {
+        if (window.AteneyAuth) {
+          AteneyAuth.logout();
+        } else {
+          localStorage.removeItem("ateney-user");
+          localStorage.removeItem("ateney-token");
+          localStorage.removeItem("ateney-token-v2");
+        }
+        window.location.href = "/login/";
+      });
+    })();
+  </script>
+</body>
+</html>
