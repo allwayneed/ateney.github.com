@@ -115,6 +115,10 @@
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       Library
     </a>
+    <a href="/account/">
+      <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      アカウント
+    </a>
   </nav>
 
   <!-- MAIN CONTENT -->
@@ -183,6 +187,11 @@
               <div class="user-id" id="menuUserId"></div>
             </div>
           </div>
+          <!-- アカウント情報ページ (/account/) へのリンク。動的値は挿入しない静的リンク。 -->
+          <a href="/account/">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            アカウント情報
+          </a>
           <!-- Issue #1: 未実装ページ (/profile/ /notifications/ /account-settings/ /help/) への
                リンクは404になるため、ページができるまで出さない。
                logout は中クリック/新規タブで /logout/ の404に落ちないよう button 化。 -->
