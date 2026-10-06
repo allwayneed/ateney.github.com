@@ -233,7 +233,7 @@
 
       <div class="account-actions">
         <a class="btn" href="/create/">作品を管理</a>
-        <button type="button" class="btn btn-danger" id="logoutBtn">ログアウト</button>
+        <button type="button" class="btn btn-danger" id="accountLogoutBtn">ログアウト</button>
       </div>
     </div>
   </main>
@@ -310,7 +310,7 @@
       }
 
       // ログアウト (common.js のドロップダウンと同一処理)
-      document.getElementById("logoutBtn").addEventListener("click", function () {
+      document.getElementById("accountLogoutBtn").addEventListener("click", function () {
         if (window.AteneyAuth) {
           AteneyAuth.logout();
         } else {
