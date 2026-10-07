@@ -3,11 +3,10 @@
 
 <head>
   <meta charset="UTF-8">
-  <!-- CSP: XSS時の被害を縮小する。script-src の unsafe-inline はこのサイトが
-       インラインスクリプト前提のため暫定許可 (外部originのスクリプト読込は禁止)。
-       connect-src の workers.dev は ateney-api のホスト。Worker移転時はここも更新。
-       (meta CSP は HTTPヘッダ版と違い frame-ancestors 無効) -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.ateney-ai.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <!-- CSP: XSS時の被害を縮小する。スクリプトはすべて外部ファイル (script-src 'self' のみ)。
+       インラインscriptはCSPで完全拒否されるため、新規JSは必ず assets/js/ に置くこと。
+       connect-src の workers.dev は ateney-api のホスト。Worker移転時はここも更新。 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.ateney-ai.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="シーンの一覧">
@@ -145,11 +144,8 @@
 </head>
 
 <body>
-  <script>
-    /* ダークモードFOUC防止 — 描画前にbodyへクラスを付与 (実体はcommon.js) */
-    try { if (localStorage.getItem("ateney-dark") === "1") document.body.classList.add("dark"); } catch (e) {}
-  </script>
-  <script src="/auth.js"></script>
+<script src="/assets/js/darkmode-early.js"></script>
+<script src="/auth.js"></script>
   <script src="/common.js"></script>
 
   <!-- HEADER / OVERLAY / SLIDE MENU は common.js が注入する (Issue #9) -->
@@ -161,122 +157,6 @@
     </div>
   </main>
 
-  <script>
-/* =========================
-       scene LIST
-    ========================= */
-
-    const cfg = window.ATENEY_CONFIG || {};
-    const API_URL = (cfg.API_BASE || "") + "/api/scene";
-    const container = document.getElementById("scene-list");
-
-    function showSkeletons(count = 4) {
-      container.innerHTML = "";
-      for (let i = 0; i < count; i++) {
-        const skel = document.createElement("div");
-        skel.className = "skeleton-card";
-        skel.innerHTML = `
-          <div class="skel-img"></div>
-          <div class="skel-body">
-            <div class="skel-line"></div>
-            <div class="skel-line short"></div>
-          </div>
-        `;
-        container.appendChild(skel);
-      }
-    }
-
-    function showState(emoji, message) {
-      container.innerHTML = `
-        <div class="state-msg">
-          <span class="state-emoji">${emoji}</span>
-          ${message}
-        </div>
-      `;
-    }
-
-    function setText(el, text) {
-      el.textContent = text || "";
-    }
-
-    function createCard(scene, index) {
-      const card = document.createElement("div");
-      card.className = "scene-card";
-      card.style.setProperty("--card-index", index);
-
-      const imgWrap = document.createElement("div");
-      imgWrap.className = "card-image";
-
-      if (scene.avatar_url) {
-        const img = document.createElement("img");
-        img.alt = scene.name || "scene";
-        img.loading = "lazy";
-        img.src = scene.avatar_url;
-
-        img.addEventListener("error", () => {
-          imgWrap.innerHTML = "";
-          const fb = document.createElement("div");
-          fb.className = "card-image-fallback";
-          setText(fb, (scene.name || "?").charAt(0));
-          imgWrap.appendChild(fb);
-        });
-
-        imgWrap.appendChild(img);
-      } else {
-        const fb = document.createElement("div");
-        fb.className = "card-image-fallback";
-        setText(fb, (scene.name || "?").charAt(0));
-        imgWrap.appendChild(fb);
-      }
-
-      const info = document.createElement("div");
-      info.className = "scene-info";
-
-      const name = document.createElement("h3");
-      setText(name, scene.name);
-      info.appendChild(name);
-
-      if (scene.description) {
-        const desc = document.createElement("p");
-        setText(desc, scene.description);
-        info.appendChild(desc);
-      }
-
-      card.appendChild(imgWrap);
-      card.appendChild(info);
-      return card;
-    }
-
-    async function loadscenes() {
-      showSkeletons(4);
-
-      try {
-        const response = await fetch(API_URL);
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        const scenes = data.scenes || data.scenes || data || [];
-
-        if (!Array.isArray(scenes) || scenes.length === 0) {
-          showState("🌙", "まだシーンがありません。たぶんメンテ中です");
-          return;
-        }
-
-        container.innerHTML = "";
-        scenes.forEach((char, i) => {
-          container.appendChild(createCard(char, i));
-        });
-
-      } catch (err) {
-        console.error("Failed to load scenes:", err);
-        showState("⚠️", "シーンを読み込めませんでした");
-      }
-    }
-
-    loadscenes();
-    </script>
+<script src="assets/js/page-scene.js"></script>
 </body>
 </html>
