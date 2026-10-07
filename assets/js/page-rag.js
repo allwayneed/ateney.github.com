@@ -36,8 +36,9 @@
     }
 
     function createCard(rag, index) {
-      const card = document.createElement("div");
+      const card = document.createElement("a");
       card.className = "rag-card";
+      card.href = "/rag/" + rag.id + "/";
       card.style.setProperty("--card-index", index);
 
       const imgWrap = document.createElement("div");
