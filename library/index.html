@@ -169,7 +169,12 @@
     @media (hover: none) {
       .library-remove { opacity: 0.85; } /* タッチ端末は常時表示 */
     }
-  </style>
+    /* 削除失敗フィードバック (page-library.js) */
+  .library-remove.rm-failed {
+    background: #e5484d;
+    color: #fff;
+  }
+</style>
 </head>
 
 <body>

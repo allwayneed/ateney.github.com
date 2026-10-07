@@ -105,12 +105,17 @@
         } catch (err) {
           console.error(err);
           rm.disabled = false;
+          // 削除失敗が分かるように一瞬ボタンを赤く (consoleだけでは気付けない)
+          rm.classList.add("rm-failed");
+          rm.title = "削除できませんでした。もう一度お試しください";
+          setTimeout(function () { rm.classList.remove("rm-failed"); }, 1500);
         }
       });
       card.appendChild(rm);
 
-      // カードクリックでキャラ詳細へ
+      // カードクリックでキャラ詳細へ (idが無いデータは遷移しない)
       card.addEventListener("click", function () {
+        if (!library.id) return;
         location.href = "/character/" + encodeURIComponent(library.id);
       });
       return card;

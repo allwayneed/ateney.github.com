@@ -61,9 +61,6 @@
     var cfg = window.ATENEY_CONFIG || {};
     var apiBase = (cfg && cfg.API_BASE) || "";
 
-    // UUID正規表現 — 12345678-1234-1234-1234-123456789abc
-    var uuidRegex = /^\/character\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\/?$/;
-    var uuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
     function setText(el, text) { if (el) el.textContent = text || ""; }
 
@@ -348,6 +345,12 @@
         var headers = window.AteneyAuth ? AteneyAuth.getAuthHeaders() : {};
         var res = await fetch(apiBase + "/api/rag/" + uuid, { headers: headers });
 
+        if (res.status === 401) {
+          // RAG は認証必須。未ログイン/期限切れならエラー画面でなくログインへ
+          stopLoadingRotation();
+          location.href = "/login/";
+          return;
+        }
         if (res.status === 404) {
           stopLoadingRotation();
           showNotFound();
