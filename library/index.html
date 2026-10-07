@@ -3,11 +3,10 @@
 
 <head>
   <meta charset="UTF-8">
-  <!-- CSP: XSS時の被害を縮小する。script-src の unsafe-inline はこのサイトが
-       インラインスクリプト前提のため暫定許可 (外部originのスクリプト読込は禁止)。
-       connect-src の workers.dev は ateney-api のホスト。Worker移転時はここも更新。
-       (meta CSP は HTTPヘッダ版と違い frame-ancestors 無効) -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.ateney-ai.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+  <!-- CSP: XSS時の被害を縮小する。スクリプトはすべて外部ファイル (script-src 'self' のみ)。
+       インラインscriptはCSPで完全拒否されるため、新規JSは必ず assets/js/ に置くこと。
+       connect-src の workers.dev は ateney-api のホスト。Worker移転時はここも更新。 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.ateney-ai.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="作ったものをまとめて見るライブラリ">
@@ -141,15 +140,41 @@
     }
 
 
+
+    /* Issue #5: ライブラリ削除ボタン */
+    .library-card { position: relative; }
+    .library-remove {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 5;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      font-size: 15px;
+      line-height: 28px;
+      text-align: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s var(--ease), background 0.2s var(--ease);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .library-card:hover .library-remove,
+    .library-remove:focus-visible { opacity: 1; }
+    .library-remove:hover { background: #c23b41; }
+    .library-remove:disabled { opacity: 0.5; cursor: default; }
+    @media (hover: none) {
+      .library-remove { opacity: 0.85; } /* タッチ端末は常時表示 */
+    }
   </style>
 </head>
 
 <body>
-  <script>
-    /* ダークモードFOUC防止 — 描画前にbodyへクラスを付与 (実体はcommon.js) */
-    try { if (localStorage.getItem("ateney-dark") === "1") document.body.classList.add("dark"); } catch (e) {}
-  </script>
-  <script src="/auth.js"></script>
+<script src="/assets/js/darkmode-early.js"></script>
+<script src="/auth.js"></script>
   <script src="/common.js"></script>
 
   <!-- HEADER / OVERLAY / SLIDE MENU は common.js が注入する (Issue #9) -->
@@ -161,124 +186,6 @@
     </div>
   </main>
 
-  <script>
-/* =========================
-       library LIST
-    ========================= */
-
-    // Issue #5: Worker側に /api/library が生えたら loadLibrarys() を有効化する
-    const cfg = window.ATENEY_CONFIG || {};
-    const API_URL = (cfg.API_BASE || "") + "/api/library";
-    const container = document.getElementById("library-list");
-
-    function showSkeletons(count = 4) {
-      container.innerHTML = "";
-      for (let i = 0; i < count; i++) {
-        const skel = document.createElement("div");
-        skel.className = "skeleton-card";
-        skel.innerHTML = `
-          <div class="skel-img"></div>
-          <div class="skel-body">
-            <div class="skel-line"></div>
-            <div class="skel-line short"></div>
-          </div>
-        `;
-        container.appendChild(skel);
-      }
-    }
-
-    function showState(emoji, message) {
-      container.innerHTML = `
-        <div class="state-msg">
-          <span class="state-emoji">${emoji}</span>
-          ${message}
-        </div>
-      `;
-    }
-
-    function setText(el, text) {
-      el.textContent = text || "";
-    }
-
-    function createCard(library, index) {
-      const card = document.createElement("div");
-      card.className = "library-card";
-      card.style.setProperty("--card-index", index);
-
-      const imgWrap = document.createElement("div");
-      imgWrap.className = "card-image";
-
-      if (library.avatar_url) {
-        const img = document.createElement("img");
-        img.alt = library.name || "library";
-        img.loading = "lazy";
-        img.src = library.avatar_url;
-
-        img.addEventListener("error", () => {
-          imgWrap.innerHTML = "";
-          const fb = document.createElement("div");
-          fb.className = "card-image-fallback";
-          setText(fb, (library.name || "?").charAt(0));
-          imgWrap.appendChild(fb);
-        });
-
-        imgWrap.appendChild(img);
-      } else {
-        const fb = document.createElement("div");
-        fb.className = "card-image-fallback";
-        setText(fb, (library.name || "?").charAt(0));
-        imgWrap.appendChild(fb);
-      }
-
-      const info = document.createElement("div");
-      info.className = "library-info";
-
-      const name = document.createElement("h3");
-      setText(name, library.name);
-      info.appendChild(name);
-
-      if (library.description) {
-        const desc = document.createElement("p");
-        setText(desc, library.description);
-        info.appendChild(desc);
-      }
-
-      card.appendChild(imgWrap);
-      card.appendChild(info);
-      return card;
-    }
-
-    async function loadlibrarys() {
-      showSkeletons(4);
-
-      try {
-        const response = await fetch(API_URL);
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        const librarys = data.librarys || data.scenes || data || [];
-
-        if (!Array.isArray(librarys) || librarys.length === 0) {
-          showState("🌙", "まだパックがありません。たぶんメンテ中です");
-          return;
-        }
-
-        container.innerHTML = "";
-        librarys.forEach((char, i) => {
-          container.appendChild(createCard(char, i));
-        });
-
-      } catch (err) {
-        console.error("Failed to load librarys:", err);
-        showState("⚠️", "パックを読み込めませんでした");
-      }
-    }
-
-    // APIエンドポイントができたら loadLibrarys() を有効化
-    showState("📚", "Library — 準備中");
-    </script>
+<script src="assets/js/page-library.js"></script>
 </body>
 </html>
