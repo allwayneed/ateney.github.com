@@ -73,6 +73,71 @@
         return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
       });
     }
+    // --- ライブラリ追加/削除 (Issue #5, /api/library) ---
+    var libBusy = false;
+    function setupLibraryButton(charId) {
+      var btn = document.getElementById("chat-btn");
+      if (!btn) return;
+      var icon = btn.querySelector("svg") ? btn.querySelector("svg").outerHTML : "";
+      var inLibrary = false;
+
+      function setBtn(label) {
+        btn.innerHTML = icon + escapeHtml(label);
+      }
+
+      function authReady() {
+        return (window.AteneyAuth && AteneyAuth.ready)
+          ? Promise.resolve(AteneyAuth.ready).catch(function() {})
+          : Promise.resolve();
+      }
+
+      btn.addEventListener("click", function() {
+        if (libBusy) return;
+        authReady().then(function() {
+          if (!window.AteneyAuth || !AteneyAuth.isLoggedIn()) {
+            location.href = "/login/";
+            return;
+          }
+          libBusy = true;
+          btn.disabled = true;
+          var method = inLibrary ? "DELETE" : "POST";
+          fetch(apiBase + "/api/library/" + encodeURIComponent(charId), {
+            method: method,
+            headers: AteneyAuth.getAuthHeaders(),
+          })
+            .then(function(res) {
+              if (res.status === 401) { location.href = "/login/"; return null; }
+              if (!res.ok) throw new Error("HTTP " + res.status);
+              inLibrary = !inLibrary;
+              setBtn(inLibrary ? "ライブラリから削除" : "ライブラリに追加");
+            })
+            .catch(function(err) {
+              console.error(err);
+              setBtn(inLibrary ? "ライブラリから削除" : "ライブラリに追加");
+            })
+            .then(function() { btn.disabled = false; libBusy = false; });
+        });
+      });
+
+      // ログイン済みなら所持状態をボタンに反映
+      authReady().then(function() {
+        if (!window.AteneyAuth || !AteneyAuth.isLoggedIn()) return;
+        fetch(apiBase + "/api/library", { headers: AteneyAuth.getAuthHeaders() })
+          .then(function(res) { return res.ok ? res.json() : { library: [] }; })
+          .then(function(data) {
+            var items = data.library || [];
+            for (var i = 0; i < items.length; i++) {
+              if (items[i].id === charId) {
+                inLibrary = true;
+                setBtn("ライブラリから削除");
+                return;
+              }
+            }
+          })
+          .catch(function(e) { /* 所持チェック失敗はクリック時に再試行 */ });
+      });
+    }
+
     // アバターURLはhttp(s)のみ許可
     function safeAvatarUrl(u) {
       return (typeof u === "string" && /^https?:\/\//i.test(u)) ? u : null;
@@ -155,11 +220,14 @@
         html += '<div class="char-section"><h2>挨拶</h2><p id="char-greeting" style="font-style:italic"></p></div>';
       }
 
-      html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>ライブラリに追加</button></div>';
+      html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>ライブラリに追加</button></div>';
 
       html += '</div>';
 
       content.innerHTML = html;
+
+      // ライブラリボタン (Issue #5)
+      setupLibraryButton(c.id);
 
       // 画像読み込み失敗時のフォールバック（textContentで安全に）
       var img = content.querySelector(".char-avatar-img");
@@ -221,7 +289,6 @@
         html += '<div class="char-section"><h2>会話例</h2><p id="char-greeting" style="font-style:italic"></p></div>';
       }
 
-      html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>ライブラリに追加</button></div>';
 
       html += '</div>';
 
@@ -254,7 +321,6 @@
       if (c.description) {
         html += '<div class="char-section"><h2>説明</h2><p id="char-desc"></p></div>';
       }
-      html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>ライブラリに追加</button></div>';
       html += '</div>';
       content.innerHTML = html;
 

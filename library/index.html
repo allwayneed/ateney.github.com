@@ -140,6 +140,35 @@
     }
 
 
+
+    /* Issue #5: ライブラリ削除ボタン */
+    .library-card { position: relative; }
+    .library-remove {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 5;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      font-size: 15px;
+      line-height: 28px;
+      text-align: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s var(--ease), background 0.2s var(--ease);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .library-card:hover .library-remove,
+    .library-remove:focus-visible { opacity: 1; }
+    .library-remove:hover { background: #c23b41; }
+    .library-remove:disabled { opacity: 0.5; cursor: default; }
+    @media (hover: none) {
+      .library-remove { opacity: 0.85; } /* タッチ端末は常時表示 */
+    }
   </style>
 </head>
 

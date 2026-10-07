@@ -2,7 +2,7 @@
        library LIST
     ========================= */
 
-    // Issue #5: Worker側に /api/library が生えたら loadLibrarys() を有効化する
+    // Issue #5: /api/library に実接続 (2026-10-07)
     const cfg = window.ATENEY_CONFIG || {};
     const API_URL = (cfg.API_BASE || "") + "/api/library";
     const container = document.getElementById("library-list");
@@ -81,37 +81,84 @@
 
       card.appendChild(imgWrap);
       card.appendChild(info);
+
+      // 削除ボタン (ライブラリから外す)
+      const rm = document.createElement("button");
+      rm.type = "button";
+      rm.className = "library-remove";
+      rm.title = "ライブラリから削除";
+      rm.setAttribute("aria-label", (library.name || "このキャラ") + "をライブラリから削除");
+      rm.textContent = "×";
+      rm.addEventListener("click", async function (e) {
+        e.stopPropagation();
+        rm.disabled = true;
+        try {
+          const res = await fetch(API_URL + "/" + encodeURIComponent(library.id), {
+            method: "DELETE",
+            headers: AteneyAuth.getAuthHeaders(),
+          });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          card.remove();
+          if (!container.querySelector(".library-card")) {
+            showState("🌙", EMPTY_MSG);
+          }
+        } catch (err) {
+          console.error(err);
+          rm.disabled = false;
+        }
+      });
+      card.appendChild(rm);
+
+      // カードクリックでキャラ詳細へ
+      card.addEventListener("click", function () {
+        location.href = "/character/" + encodeURIComponent(library.id);
+      });
       return card;
     }
 
-    async function loadlibrarys() {
+    const EMPTY_MSG = 'まだ何もライブラリに入れていません。<a href="/">ホーム</a>でキャラを探そう';
+
+    async function loadLibrary() {
+      // 復号待ち (AES-GCM)
+      if (window.AteneyAuth && AteneyAuth.ready) {
+        try { await AteneyAuth.ready; } catch (e) {}
+      }
+      const loggedIn = !!(window.AteneyAuth && AteneyAuth.isLoggedIn());
+      if (!loggedIn) {
+        showState("🔑", 'ライブラリを使うには<a href="/login/" style="color:var(--accent);font-weight:600">ログイン</a>が必要です');
+        return;
+      }
+
       showSkeletons(4);
 
       try {
-        const response = await fetch(API_URL);
+        const response = await fetch(API_URL, { headers: AteneyAuth.getAuthHeaders() });
 
+        if (response.status === 401) {
+          location.href = "/login/";
+          return;
+        }
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
 
         const data = await response.json();
-        const librarys = data.librarys || data.scenes || data || [];
+        const items = data.library || [];
 
-        if (!Array.isArray(librarys) || librarys.length === 0) {
-          showState("🌙", "まだパックがありません。たぶんメンテ中です");
+        if (!Array.isArray(items) || items.length === 0) {
+          showState("🌙", EMPTY_MSG);
           return;
         }
 
         container.innerHTML = "";
-        librarys.forEach((char, i) => {
+        items.forEach((char, i) => {
           container.appendChild(createCard(char, i));
         });
 
       } catch (err) {
-        console.error("Failed to load librarys:", err);
-        showState("⚠️", "パックを読み込めませんでした");
+        console.error("Failed to load library:", err);
+        showState("⚠️", "ライブラリを読み込めませんでした");
       }
     }
 
-    // APIエンドポイントができたら loadLibrarys() を有効化
-    showState("📚", "Library — 準備中");
+    loadLibrary();
