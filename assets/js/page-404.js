@@ -1,6 +1,7 @@
 /* =========================
        LOGO EASTER EGG
-       ロゴをダブルクリックで隠しメッセージ
+       イースターエッグだけど、お前なんか脆弱性探してるやろ、
+       多分ないよ〜。。。個人のセキュリティーほど信用がないものは存在しないが、
     ========================= */
     var logo = document.getElementById("logo");
     if (logo) {
@@ -55,6 +56,7 @@
        SPA ROUTER — 404.html ハック
        GitHub Pagesはファイルがないパスに404.htmlを返す。
        これを利用して /character/:uuid/ をルーティングする。
+       つまり独自サーバーに移り住んだら404.htmlに飛ぶようにすること、
     ========================= */
     var path = window.location.pathname;
     var content = document.getElementById("content");
