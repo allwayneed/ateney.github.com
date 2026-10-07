@@ -166,7 +166,7 @@ body.dark .btn-primary {
   flex-shrink: 0;
 }
 
-.icon-btn {
+.item-actions .icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -181,22 +181,22 @@ body.dark .btn-primary {
   -webkit-tap-highlight-color: transparent;
 }
 
-.icon-btn svg {
+.item-actions .icon-btn svg {
   width: 17px;
   height: 17px;
 }
 
-.icon-btn:hover {
+.item-actions .icon-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.icon-btn.danger:hover {
+.item-actions .icon-btn.danger:hover {
   border-color: #e5484d;
   color: #e5484d;
 }
 
-.icon-btn:active {
+.item-actions .icon-btn:active {
   transform: scale(0.94);
 }
 
@@ -207,5 +207,5 @@ body.dark .btn-primary {
     font-size: 0.88rem;
   }
   .btn { padding: 10px 18px; font-size: 0.84rem; }
-  .icon-btn { width: 34px; height: 34px; }
+  .item-actions .icon-btn { width: 34px; height: 34px; }
 }
