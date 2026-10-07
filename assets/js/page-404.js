@@ -258,20 +258,20 @@
       if (c.tags) {
         var tagList = c.tags.split(",").map(function(t) { return t.trim(); }).filter(Boolean);
         tagsHtml = tagList.map(function(t) {
-          return '<span class="scene-tag">' + escapeHtml(t) + '</span>';
+          return '<span class="char-tag">' + escapeHtml(t) + '</span>';
         }).join("");
       }
       // genreもタグとして表示
       if (c.genre) {
         var genres = c.genre.split(",").map(function(g) { return g.trim(); }).filter(Boolean);
         genres.forEach(function(g) {
-          tagsHtml += '<span class="scene-tag">' + escapeHtml(g) + '</span>';
+          tagsHtml += '<span class="char-tag">' + escapeHtml(g) + '</span>';
         });
       }
 
       // セクション組み立て
       var html = '<div class="char-detail">';
-      html += '<a href="/characters/" class="char-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>キャラクター一覧</a>';
+      html += '<a href="/scene/" class="char-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>シーン一覧</a>';
 
       html += '<div class="char-header">';
       html += '<div class="char-avatar">' + avatarHtml + '</div>';
@@ -281,11 +281,8 @@
       if (c.description) {
         html += '<div class="char-section"><h2>説明</h2><p id="char-desc"></p></div>';
       }
-      if (c.personality) {
-        html += '<div class="char-section"><h2>性格</h2><p id="char-personality"></p></div>';
-      }
-      if (c.greeting) {
-        html += '<div class="char-section"><h2>会話例</h2><p id="char-greeting" style="font-style:italic"></p></div>';
+      if (c.setting) {
+        html += '<div class="char-section"><h2>場面設定</h2><p id="char-setting"></p></div>';
       }
 
 
@@ -296,8 +293,7 @@
       // セキュアにDOM設定（XSS対策 — textContent使用）
       setText(document.getElementById("char-name"), c.name);
       setText(document.getElementById("char-desc"), c.description);
-      setText(document.getElementById("char-personality"), c.personality);
-      setText(document.getElementById("char-greeting"), c.greeting);
+      setText(document.getElementById("char-setting"), c.setting);
     }
 
     function renderRAG(c) {

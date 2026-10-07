@@ -36,8 +36,9 @@
     }
 
     function createCard(scene, index) {
-      const card = document.createElement("div");
+      const card = document.createElement("a");
       card.className = "scene-card";
+      card.href = "/scene/" + scene.id + "/";
       card.style.setProperty("--card-index", index);
 
       const imgWrap = document.createElement("div");
@@ -94,7 +95,7 @@
         }
 
         const data = await response.json();
-        const scenes = data.scenes || data.scenes || data || [];
+        const scenes = data.scenes || data || [];
 
         if (!Array.isArray(scenes) || scenes.length === 0) {
           showState("🌙", "まだシーンがありません。たぶんメンテ中です");
