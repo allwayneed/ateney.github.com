@@ -155,11 +155,13 @@
         justify-content: center;
         gap: 8px;
         width: 100%;
-        padding: 14px;
-        border: 1.5px solid var(--border);
-        border-radius: 14px;
-        background: var(--bg-elevated);
-        color: var(--text);
+        max-width: 420px;
+        margin: 0 auto 16px;
+        padding: 12px 16px;
+        border: 1.5px dashed var(--accent);
+        border-radius: 12px;
+        background: transparent;
+        color: var(--accent);
         font-size: 0.9rem;
         font-weight: 600;
         cursor: pointer;
@@ -174,9 +176,8 @@
     }
 
     .create-toggle:hover {
-        border-color: var(--accent);
-        color: var(--accent);
-        box-shadow: 0 4px 14px rgba(91, 141, 239, 0.12);
+        background: var(--bg-elevated);
+        transform: translateY(-1px);
     }
 
     .create-toggle:active {
@@ -279,78 +280,149 @@
     }
 
     /* =========================
-       CREATE PAGE — item-list
+       CREATE PAGE — item-list (Libraryリスト行UI準拠, 2026-10-08)
+       シェル側idと被らないよう cr* 接頭辞。.item-listはcreateページ専用id
     ========================= */
     .item-list {
         list-style: none;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 14px;
+        align-items: center;
     }
 
-    .item-list li a {
+    .item-list > li { width: 100%; max-width: 420px; }
+
+    .cr-row {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 12px 16px;
+        background: var(--bg-elevated);
         border: 1px solid var(--border);
         border-radius: 12px;
-        background: var(--bg-elevated);
-        color: var(--text);
+        padding: 12px;
+        cursor: pointer;
+        text-align: left;
         text-decoration: none;
-        font-size: 0.9rem;
-        font-weight: 500;
-        transition: all 0.2s var(--ease);
-        -webkit-tap-highlight-color: transparent;
+        color: var(--text);
+        width: 100%;
+        box-sizing: border-box;
+        transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
+        opacity: 0;
+        transform: translateY(10px);
+        animation: cr-row-in 0.35s var(--ease) forwards;
+        animation-delay: calc(var(--row-index, 0) * 60ms);
     }
-
-    .item-list li a:hover {
+    @keyframes cr-row-in {
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .cr-row:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px var(--shadow);
         border-color: var(--accent);
-        box-shadow: 0 4px 12px var(--shadow);
-        transform: translateX(4px);
     }
-
-    .item-list li a:active {
-        transform: translateX(2px) scale(0.99);
+    .cr-row:active { transform: translateY(0) scale(0.995); }
+    .cr-row:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
     }
+    .cr-row:focus:not(:focus-visible) { outline: none; }
 
-    .item-list .item-thumb {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        background: var(--border);
-        flex-shrink: 0;
+    .cr-thumb {
+        width: 52px;
+        height: 52px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--border), var(--bg-elevated));
         overflow: hidden;
+        flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         color: var(--text-secondary);
-        font-size: 1rem;
+        font-size: 1.3rem;
         font-weight: 700;
+        text-transform: uppercase;
     }
-
-    .item-list .item-thumb img {
+    .cr-thumb img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        display: block;
     }
 
-    .item-list .item-name {
+    .cr-row-info {
         flex: 1;
+        min-width: 0;
     }
+    .cr-row-name {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .cr-kind {
+        display: inline-block;
+        flex-shrink: 0;
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 1px 7px;
+        border-radius: 999px;
+        background: var(--border);
+        color: var(--text-secondary);
+        text-transform: uppercase;
+    }
+    .cr-kind.k-pack { background: var(--accent); color: #fff; }
 
-    .item-list .item-type {
+    /* 公開状態バッジ */
+    .cr-vis {
+        display: inline-block;
+        flex-shrink: 0;
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        padding: 1px 7px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+        background: transparent;
+    }
+    .cr-vis.v-public { color: var(--accent); border-color: var(--accent); }
+    .cr-vis.v-packonly { color: #b08de0; border-color: #b08de0; }
+
+    .cr-row-dates {
         font-size: 0.72rem;
         color: var(--text-secondary);
-        background: var(--bg);
-        padding: 3px 8px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
     }
 
-    /* item-list — ローディング */
+    .cr-menu-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        padding: 4px 8px;
+        margin: -4px -6px;
+        border-radius: 8px;
+        flex-shrink: 0;
+        transition: color 0.2s var(--ease), background 0.2s var(--ease);
+    }
+    .cr-menu-btn:hover { color: var(--text); background: var(--border); }
+
+    /* ローディングスケルトン */
     .item-skeleton {
-        height: 44px;
+        height: 76px;
         border: 1px solid var(--border);
         border-radius: 12px;
         background: linear-gradient(90deg, var(--border) 25%, var(--bg-elevated) 50%, var(--border) 75%);
@@ -358,45 +430,88 @@
         animation: shimmer 1.4s infinite;
     }
 
-    /* CREATE PAGE — 小さい画面用 */
-    @media (max-width: 480px) {
-      .create-toggle {
-        padding: 11px 12px;
-        font-size: 0.82rem;
-        border-radius: 12px;
-      }
-      .create-toggle svg {
-        width: 17px;
-        height: 17px;
-      }
-      .create-menu {
-        gap: 8px;
-      }
-      .create-menu li a {
-        padding: 9px 14px;
-        font-size: 0.78rem;
-        border-radius: 10px;
-      }
-      .filter {
-        gap: 6px;
-        margin-bottom: 16px;
-      }
-      .filter li a {
-        padding: 6px 12px;
-        font-size: 0.76rem;
-      }
-      .item-list li a {
-        padding: 10px 12px;
-        gap: 10px;
-      }
-      .item-list .item-thumb {
-        width: 32px;
-        height: 32px;
-      }
+    /* 空状態 */
+    .cr-state {
+        width: 100%;
+        max-width: 420px;
+        text-align: center;
+        color: var(--text-secondary);
+        padding: 40px 0;
+        font-size: 0.9rem;
+        line-height: 1.8;
     }
+    .cr-state .state-emoji { font-size: 2rem; display: block; margin-bottom: 8px; }
 
-  
-  
+    /* ···メニューのボトムシート (lib-popup準拠) */
+    .cr-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1001;
+    }
+    .cr-backdrop.active { display: block; }
+    .cr-popup {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--bg-elevated);
+        border-top: 1px solid var(--border);
+        border-radius: 16px 16px 0 0;
+        box-shadow: 0 -4px 16px var(--shadow);
+        z-index: 1002;
+        animation: cr-slideup 0.3s var(--ease) forwards;
+    }
+    .cr-popup.active { display: block; }
+    @keyframes cr-slideup {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+    .cr-popup-content {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 480px;
+        margin: 0 auto;
+    }
+    .cr-popup-title {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-align: center;
+        padding: 4px 0 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .cr-popup-item {
+        padding: 13px 16px;
+        border-radius: 10px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text);
+        text-align: left;
+        width: 100%;
+        box-sizing: border-box;
+        font-family: inherit;
+        text-decoration: none;
+        transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
+    }
+    .cr-popup-item:hover { border-color: var(--accent); }
+    .cr-popup-item.danger { color: #c23b41; }
+    .cr-popup-item.danger:hover { border-color: #c23b41; }
+
+    /* 小さい画面 */
+    @media (max-width: 480px) {
+      .cr-thumb { width: 44px; height: 44px; }
+      .cr-row { padding: 10px 12px; gap: 10px; }
+    }
 
     /* 20件ブロック読み込みの「もっと見る」 */
     .load-more { display: flex; justify-content: center; padding: 8px 0; }
@@ -419,6 +534,7 @@
   <main class="main">
     <div class="main-inner">
         <h2>Create</h2>
+        <!-- ※ main-inner直下は上から: toggle → menu → filter → list (JSは既存idをそのまま使用) -->
         <button class="create-toggle" id="createToggle" aria-expanded="false">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             create
@@ -440,6 +556,15 @@
         </ul>
     </div>
   </main>
+
+  <!-- ···メニュー (ボトムシート)。idはcr*接頭辞でシェル13idと衝突回避 -->
+  <div class="cr-backdrop" id="crBackdrop"></div>
+  <div class="cr-popup" id="crPopup" role="dialog" aria-modal="true">
+    <div class="cr-popup-content">
+      <p class="cr-popup-title" id="crPopupTitle"></p>
+      <div id="crPopupActions"></div>
+    </div>
+  </div>
 
 <script src="/assets/js/page-create.js"></script>
 </body>

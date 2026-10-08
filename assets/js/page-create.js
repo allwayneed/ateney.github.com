@@ -15,9 +15,6 @@
     var itemList = document.getElementById("itemList");
     var filterTabs = document.querySelectorAll("#filter a");
 
-    var SVG_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
-    var SVG_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
-
     function getAuthHeaders() {
       // auth.js: メモリ上の復号済みトークンから組み立てる (localStorageに平文は無い)
       if (window.AteneyAuth) return AteneyAuth.getAuthHeaders();
@@ -25,7 +22,7 @@
     }
 
     if (!apiBase) {
-      itemList.innerHTML = '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">設定ファイル (config.js) が読み込めていません 😴</li>';
+      itemList.innerHTML = '<li><div class="cr-state"><span class="state-emoji">😴</span>設定ファイル (config.js) が読み込めていません</div></li>';
     }
 
     filterTabs.forEach(function(tab) {
@@ -38,12 +35,97 @@
     });
 
     function emptyMsg(type) {
-      return '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">' +
-        'まだ' + (type === "rag" ? "RAG" : type) + 'を作ってないよ。上のcreateから作れる ✨</li>';
+      return '<li><div class="cr-state"><span class="state-emoji">✨</span>' +
+        'まだ' + (type === "rag" ? "RAG" : type) + 'を作ってないよ。<br>上の create から作れる</div></li>';
+    }
+
+    /* 日付整形 (Library準拠): "2026-10-08 05:21:33" → "2026/10/08" */
+    function fmtDate(s) {
+      if (!s) return "";
+      var m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? (m[1] + "/" + m[2] + "/" + m[3]) : "";
+    }
+
+    /* 公開状態バッジの文言とclass */
+    function visBadge(type, item) {
+      if (type === "rag") return null; // RAGは公開概念なし
+      if (item.pack_only) return { text: "pack専用", cls: "cr-vis v-packonly" };
+      return item.is_public
+        ? { text: "公開", cls: "cr-vis v-public" }
+        : { text: "非公開", cls: "cr-vis" };
+    }
+
+    /* ···メニュー (ボトムシート)。Library準拠 */
+    var crPopup = document.getElementById("crPopup");
+    var crBackdrop = document.getElementById("crBackdrop");
+    var crPopupTitle = document.getElementById("crPopupTitle");
+    var crPopupActions = document.getElementById("crPopupActions");
+
+    function closePopup() {
+      crPopup.classList.remove("active");
+      crBackdrop.classList.remove("active");
+    }
+    crBackdrop.addEventListener("click", closePopup);
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") closePopup();
+    });
+
+    function popupItem(text, danger, onClick) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "cr-popup-item" + (danger ? " danger" : "");
+      btn.textContent = text;
+      if (onClick) btn.addEventListener("click", onClick);
+      return btn;
+    }
+
+    function openRowMenu(type, item) {
+      var name = item.name || item.title || "Untitled";
+      crPopupTitle.textContent = name;
+      crPopupActions.innerHTML = "";
+
+      // 編集
+      var edit = document.createElement("a");
+      edit.className = "cr-popup-item";
+      edit.href = "/create/" + type + "/?id=" + encodeURIComponent(item.id);
+      edit.textContent = "編集";
+      crPopupActions.appendChild(edit);
+
+      // 公開⇔非公開切替 (RAG以外。pack_onlyもここで公開扱いに切り替え)
+      if (type !== "rag" && typeof item.is_public !== "undefined") {
+        var label = (item.pack_only || !item.is_public) ? "公開する" : "非公開にする";
+        crPopupActions.appendChild(popupItem(label, false, function() {
+          var next = (item.pack_only || !item.is_public) ? 1 : 0;
+          fetch(apiBase + "/api/" + type + "/" + item.id, {
+            method: "PUT",
+            headers: Object.assign({ "Content-Type": "application/json" }, getAuthHeaders()),
+            body: JSON.stringify({ is_public: next === 1 }),
+          })
+            .then(function(res) {
+              if (res.status === 401) { AteneyAuth.logout(); location.replace("/login/"); return; }
+              if (!res.ok) throw new Error("HTTP " + res.status);
+              closePopup();
+              loadItems(currentType);
+            })
+            .catch(function() { alert("変更できなかった 😴"); });
+        }));
+      }
+
+      // 削除
+      crPopupActions.appendChild(popupItem("削除", true, function() {
+        closePopup();
+        deleteItem(type, item.id, name);
+      }));
+
+      crPopup.classList.add("active");
+      crBackdrop.classList.add("active");
     }
 
     function deleteItem(type, id, name) {
-      if (!confirm("「" + name + "」を削除する？ 巻き戻しはできないよ")) return;
+      var msg = (type === "pack")
+        ? "「" + name + "」を削除する？ほかの人の道具箱からも消えるよ (巻き戻し不可)"
+        : "「" + name + "」を削除する？packに同梱されてても消えるよ (巻き戻し不可)";
+      if (!confirm(msg)) return;
       fetch(apiBase + "/api/" + type + "/" + id, {
         method: "DELETE",
         headers: getAuthHeaders(),
@@ -61,8 +143,10 @@
 
     // 20件ブロック読み込み (API側ページング ?page=N。デフォルト20/block)
     var listState = { character: { page: 1 }, scene: { page: 1 }, rag: { page: 1 }, pack: { page: 1 } };
+    var currentType = "character";
 
     function loadItems(type, append) {
+      currentType = type;
       if (!append) {
         listState[type] = { page: 1 };
         var skel = "";
@@ -94,54 +178,82 @@
             var itemName = item.name || item.title || "Untitled";
             var li = document.createElement("li");
 
-            // 行本体 → 詳細ページ (404 routerが /{type}/{id}/ を処理)
-            var a = document.createElement("a");
-            // packは公開/非公開に関わらず編集ページへ (Library本実装)
-            a.href = (type === "pack")
-              ? "/create/pack/?id=" + encodeURIComponent(itemId)
-              : "/" + type + "/" + itemId + "/";
+            // 行本体 → 編集ページ (createは管理画面なので編集が主操作)
+            var row = document.createElement("a");
+            row.className = "cr-row";
+            row.href = "/create/" + type + "/?id=" + encodeURIComponent(itemId);
+            row.style.setProperty("--row-index", String(i % 20));
+
             var thumb = document.createElement("div");
-            thumb.className = "item-thumb";
+            thumb.className = "cr-thumb";
             if (item.avatar_url || item.image_url) {
               var img = document.createElement("img");
               img.src = item.avatar_url || item.image_url;
-              img.alt = itemName;
+              img.alt = "";
               img.loading = "lazy";
-              img.addEventListener("error", function() { thumb.textContent = itemName.charAt(0).toUpperCase(); });
+              img.addEventListener("error", function() {
+                thumb.textContent = itemName.charAt(0).toUpperCase();
+              });
               thumb.appendChild(img);
             } else {
               thumb.textContent = itemName.charAt(0).toUpperCase();
             }
-            var name = document.createElement("span");
-            name.className = "item-name";
-            name.textContent = itemName;
-            var tag = document.createElement("span");
-            tag.className = "item-type";
-            tag.textContent = type;
-            a.appendChild(thumb); a.appendChild(name); a.appendChild(tag);
 
-            // 編集・削除
-            var actions = document.createElement("div");
-            actions.className = "item-actions";
-            var editBtn = document.createElement("a");
-            editBtn.className = "icon-btn";
-            editBtn.href = "/create/" + type + "/?id=" + encodeURIComponent(itemId);
-            editBtn.title = "編集";
-            editBtn.setAttribute("aria-label", itemName + "を編集");
-            editBtn.innerHTML = SVG_EDIT;
-            var delBtn = document.createElement("button");
-            delBtn.type = "button";
-            delBtn.className = "icon-btn danger";
-            delBtn.title = "削除";
-            delBtn.setAttribute("aria-label", itemName + "を削除");
-            delBtn.innerHTML = SVG_TRASH;
-            delBtn.addEventListener("click", function() { deleteItem(type, itemId, itemName); });
-            actions.appendChild(editBtn); actions.appendChild(delBtn);
+            var info = document.createElement("div");
+            info.className = "cr-row-info";
+            var nameRow = document.createElement("div");
+            nameRow.className = "cr-row-name";
+            var nameEl = document.createElement("span");
+            nameEl.style.overflow = "hidden";
+            nameEl.style.textOverflow = "ellipsis";
+            nameEl.textContent = itemName;
+            nameRow.appendChild(nameEl);
+            var kind = document.createElement("span");
+            kind.className = "cr-kind" + (type === "pack" ? " k-pack" : "");
+            kind.textContent = type === "rag" ? "RAG" : type;
+            nameRow.appendChild(kind);
+            var vis = visBadge(type, item);
+            if (vis) {
+              var visEl = document.createElement("span");
+              visEl.className = vis.cls;
+              visEl.textContent = vis.text;
+              nameRow.appendChild(visEl);
+            }
+            info.appendChild(nameRow);
 
-            a.style.opacity = "0"; a.style.transform = "translateY(10px)";
-            a.style.transition = "opacity 0.3s var(--ease), transform 0.3s var(--ease)";
-            setTimeout(function() { a.style.opacity = "1"; a.style.transform = "translateY(0)"; }, i * 50);
-            li.appendChild(a); li.appendChild(actions); itemList.appendChild(li);
+            var dates = document.createElement("div");
+            dates.className = "cr-row-dates";
+            var c = fmtDate(item.created_at), u = fmtDate(item.updated_at);
+            if (c) {
+              var cEl = document.createElement("span");
+              cEl.textContent = "作成: " + c;
+              dates.appendChild(cEl);
+            }
+            if (u && u !== c) {
+              var uEl = document.createElement("span");
+              uEl.textContent = "編集: " + u;
+              dates.appendChild(uEl);
+            }
+            info.appendChild(dates);
+            row.appendChild(thumb);
+            row.appendChild(info);
+
+            // ··· メニュー (行クリックを奪わない)
+            var menuBtn = document.createElement("button");
+            menuBtn.type = "button";
+            menuBtn.className = "cr-menu-btn";
+            menuBtn.title = "メニュー";
+            menuBtn.setAttribute("aria-label", itemName + "のメニュー");
+            menuBtn.textContent = "···";
+            menuBtn.addEventListener("click", function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              openRowMenu(type, item);
+            });
+            row.appendChild(menuBtn);
+
+            li.appendChild(row);
+            itemList.appendChild(li);
           });
           // まだ残りがあれば「もっと見る」
           if (pg.has_more) {
@@ -163,9 +275,9 @@
         .catch(function(err) {
           console.error("loadItems error:", err);
           if (err.message === "401") {
-            itemList.innerHTML = '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">ログインの期限が切れました。もう一度ログインしてください 🔒</li>';
+            itemList.innerHTML = '<li><div class="cr-state"><span class="state-emoji">🔒</span>ログインの期限が切れました。<br>もう一度ログインしてください</div></li>';
           } else {
-            itemList.innerHTML = '<li style="color:var(--text-secondary);padding:24px 0;text-align:center;font-size:0.88rem;">読み込めなかった 😴</li>';
+            itemList.innerHTML = '<li><div class="cr-state"><span class="state-emoji">😴</span>読み込めなかった</div></li>';
           }
         });
     }
