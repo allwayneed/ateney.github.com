@@ -219,7 +219,7 @@ body.dark .btn-primary {
 }
 
 /* pack作成UI (Library本実装 2026-10-08) — create配下のみで使用 */
-.pk-rag-picks {
+.pk-pick-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -229,4 +229,4 @@ body.dark .btn-primary {
   border-radius: 10px;
   padding: 10px 12px;
 }
-.pk-rag-pick { margin: 0; }
+.pk-pick-list .check-row { margin: 0; }
