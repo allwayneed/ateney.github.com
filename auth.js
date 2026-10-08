@@ -143,6 +143,19 @@
   }
 
   function logout() {
+    // #38: サーバー側のセッションも失効させる (fire-and-forget)。
+    // ログアウト直後に画面遷移するため keepalive で確実に届ける。失敗してもローカル掃除は続行。
+    var token = memToken;
+    var base = (window.ATENEY_CONFIG && window.ATENEY_CONFIG.API_BASE) || "";
+    if (token && base) {
+      try {
+        fetch(base + "/api/logout", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + token },
+          keepalive: true,
+        }).catch(function () { /* オフライン等でもローカルのログアウトは成立させる */ });
+      } catch (e) { /* fetch呼び出し自体の失敗も握り潰し */ }
+    }
     memToken = null;
     memUser = null;
     if (!storageOk) return;
