@@ -80,6 +80,12 @@
 
       card.appendChild(imgWrap);
       card.appendChild(info);
+
+      // 詳細ページへ (Library本実装: /pack/:id/ を404 routerが処理)
+      card.addEventListener("click", function () {
+        if (!pack.id) return;
+        location.href = "/pack/" + encodeURIComponent(pack.id) + "/";
+      });
       return card;
     }
 

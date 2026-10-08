@@ -9,7 +9,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.ateney-ai.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="作ったものをまとめて見るライブラリ">
+  <meta name="description" content="キャラ・シーン・RAG・packをまとめて見る道具箱">
 
   <title>Library - ateney</title>
   <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
@@ -141,6 +141,28 @@
 
 
 
+    /* 種別バッジ (道具箱: character/scene/rag/pack — 2026-10-08) */
+    .library-card .library-type-badge {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      z-index: 5;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      background: rgba(0, 0, 0, 0.55);
+      color: #fff;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      pointer-events: none;
+    }
+    .library-card .library-type-badge.is-pack {
+      background: var(--accent, rgba(91, 141, 239, 0.85));
+      color: #fff;
+    }
+
     /* Issue #5: ライブラリ削除ボタン */
     .library-card { position: relative; }
     .library-remove {
@@ -186,7 +208,7 @@
 
   <main class="main">
     <div class="main-inner">
-      <h2>library</h2>
+      <h2>library <span style="font-size:0.85rem;font-weight:400;color:var(--text-secondary)">— あなたの道具箱</span></h2>
       <div id="library-list"></div>
     </div>
   </main>

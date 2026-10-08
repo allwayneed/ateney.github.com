@@ -68,7 +68,14 @@
           <input type="text" id="f-genre" name="genre" maxlength="100" autocomplete="off">
         </div>
         <div class="field">
-          <label class="check-row"><input type="checkbox" name="is_public"> 公開する (libraryに載ります)</label>
+          <label>公開設定</label>
+          <div class="vis-row">
+            <label class="check-row"><input type="radio" name="visibility" value="private" checked> 非公開</label>
+            <label class="check-row"><input type="radio" name="visibility" value="public"> 公開する</label>
+            <label class="check-row"><input type="radio" name="visibility" value="pack"> pack専用</label>
+          </div>
+          <div class="hint">公開 = 一覧に載って誰でも追加できる。pack専用 = 単体では非公開、packに同梱して頒布する (Library 2026-10)</div>
+        </div>
         </div>
         <p class="status" id="status"></p>
         <div class="form-actions">
