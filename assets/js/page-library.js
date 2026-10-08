@@ -1,188 +1,650 @@
-/* =========================
-       library — 道具箱 (Library本実装, 2026-10-08)
-       GET /api/library → { items: [...], pagination }
-       item: { item_id, item_type, name, avatar_url, description,
-               tags, source: 'own'|'added', is_public, pack_only }
-    ========================= */
+/* =========================================================
+       library — 道具箱 (オーナーUIシート準拠, 2026-10-08)
+       リスト行 + ···メニュー (公開/名前変更/削除) + インライン詳細
+       データ: GET /api/library (統合インベントリ) + GET /api/me/pack (自packの dates/is_public)
+    ========================================================= */
 
-    const cfg = window.ATENEY_CONFIG || {};
-    const API_URL = (cfg.API_BASE || "") + "/api/library";
-    const container = document.getElementById("library-list");
+    var cfg = window.ATENEY_CONFIG || {};
+    var apiBase = (cfg && cfg.API_BASE) || "";
 
-    function showSkeletons(count = 4) {
-      container.innerHTML = "";
-      for (let i = 0; i < count; i++) {
-        const skel = document.createElement("div");
-        skel.className = "skeleton-card";
-        skel.innerHTML = `
-          <div class="skel-img"></div>
-          <div class="skel-body">
-            <div class="skel-line"></div>
-            <div class="skel-line short"></div>
-          </div>
-        `;
-        container.appendChild(skel);
-      }
+    var libApp = document.getElementById("libApp");
+    var libList = document.getElementById("libList");
+    var libStateWrap = document.getElementById("libStateWrap");
+    var libFilter = document.getElementById("libFilter");
+    var libDetail = document.getElementById("libDetail");
+    var libDetailTitle = document.getElementById("libDetailTitle");
+    var libDetailDates = document.getElementById("libDetailDates");
+    var libDetailBody = document.getElementById("libDetailBody");
+    var libBackBtn = document.getElementById("libBackBtn");
+    var libOverlay = document.getElementById("libOverlay");
+    var libPopup = document.getElementById("libPopup");
+    var libPopupContent = document.getElementById("libPopupContent");
+    var libRenameDlg = document.getElementById("libRenameDlg");
+    var libRenameInput = document.getElementById("libRenameInput");
+    var libRenameOk = document.getElementById("libRenameOk");
+    var libRenameCancel = document.getElementById("libRenameCancel");
+    var libRenameTitle = document.getElementById("libRenameTitle");
+
+    var KIND_LABEL = { character: "キャラ", scene: "シーン", rag: "RAG", pack: "pack" };
+    var TYPE_LABEL_DETAIL = { character: "キャラクター", scene: "シーン", rag: "RAG", pack: "pack" };
+
+    /* --- 状態管理 --- */
+    var items = [];          // GET /api/library の全行 (libPackInfo をマージ済み)
+    var packInfo = {};       // 自作packの追加情報 (created_at/updated_at/is_public 等) by id
+    var currentFilter = "all";
+    var currentItem = null;  // メニュー/詳細対象の行データ
+    var menuBusy = false;
+
+    function authHeaders() {
+      return window.AteneyAuth ? AteneyAuth.getAuthHeaders() : {};
     }
 
-    function showState(emoji, message) {
-      container.innerHTML = `
-        <div class="state-msg">
-          <span class="state-emoji">${emoji}</span>
-          ${message}
-        </div>
-      `;
+    function api(path, opts) {
+      opts = opts || {};
+      opts.headers = Object.assign({}, authHeaders(), opts.headers || {});
+      return fetch(apiBase + path, opts);
     }
 
     function setText(el, text) {
-      el.textContent = text || "";
+      if (el) el.textContent = text == null ? "" : text;
     }
 
-    const TYPE_LABEL = { character: "キャラ", scene: "シーン", rag: "RAG", pack: "pack" };
-    const TYPE_HREF = {
-      character: (id) => "/character/" + encodeURIComponent(id) + "/",
-      scene: (id) => "/scene/" + encodeURIComponent(id) + "/",
-      rag: (id) => "/rag/" + encodeURIComponent(id) + "/",
-      pack: (id) => "/pack/" + encodeURIComponent(id) + "/",
-    };
+    // SQLite datetime('now') はUTC "YYYY-MM-DD HH:MM:SS"。JST表記に直す
+    function fmtDate(v) {
+      if (!v) return "";
+      var m = String(v).match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
+      if (!m) return String(v);
+      try {
+        var d = new Date(m[1] + "T" + (m[2] || "00:00") + ":00Z");
+        return d.toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
+      } catch (e) { return m[1]; }
+    }
 
-    function createCard(item, index) {
-      const id = item.item_id;
-      const type = item.item_type || "character";
-      const isAdded = item.source === "added";
+    /* --- 状態表示 --- */
+    function showState(emoji, message) {
+      libStateWrap.innerHTML = "";
+      var div = document.createElement("div");
+      div.className = "lib-state";
+      var em = document.createElement("span");
+      em.className = "state-emoji";
+      em.textContent = emoji;
+      div.appendChild(em);
+      // message は信頼できる固定文言 + 自前aタグのみ。外挿なし
+      div.insertAdjacentHTML("beforeend", message);
+      libStateWrap.appendChild(div);
+    }
+    function clearState() { libStateWrap.innerHTML = ""; }
 
-      const card = document.createElement("div");
-      card.className = "library-card";
-      card.style.setProperty("--card-index", index);
+    /* --- ローディング --- */
+    function showSkeletons() {
+      libList.innerHTML = "";
+      for (var i = 0; i < 4; i++) {
+        var skel = document.createElement("div");
+        skel.className = "skeleton-card";
+        skel.innerHTML = '<div class="skel-img"></div><div class="skel-body"><div class="skel-line"></div><div class="skel-line short"></div></div>';
+        libList.appendChild(skel);
+      }
+    }
 
-      const imgWrap = document.createElement("div");
-      imgWrap.className = "card-image";
+    /* --- リスト描画 --- */
+    function visibleItems() {
+      if (currentFilter === "all") return items;
+      return items.filter(function(it) { return it.item_type === currentFilter; });
+    }
 
-      if (item.avatar_url) {
-        const img = document.createElement("img");
-        img.alt = item.name || type;
+    function createThumb(item) {
+      var thumb = document.createElement("div");
+      thumb.className = "lib-thumb";
+      var url = item.avatar_url;
+      if (url && /^https?:\/\//i.test(url)) {
+        var img = document.createElement("img");
+        img.alt = item.name || "";
         img.loading = "lazy";
-        img.src = item.avatar_url;
-        img.addEventListener("error", () => {
-          imgWrap.innerHTML = "";
-          const fb = document.createElement("div");
-          fb.className = "card-image-fallback";
-          setText(fb, (item.name || "?").charAt(0));
-          imgWrap.appendChild(fb);
-        });
-        imgWrap.appendChild(img);
+        img.src = url;
+        img.addEventListener("error", function() { thumb.textContent = (item.name || "?").charAt(0); });
+        thumb.appendChild(img);
       } else {
-        const fb = document.createElement("div");
-        fb.className = "card-image-fallback";
-        setText(fb, (item.name || "?").charAt(0));
-        imgWrap.appendChild(fb);
+        thumb.textContent = (item.name || "?").charAt(0);
       }
-
-      // 種別バッジ
-      const typeBadge = document.createElement("span");
-      typeBadge.className = "library-type-badge" + (type === "pack" ? " is-pack" : "");
-      typeBadge.textContent = TYPE_LABEL[type] || type;
-      imgWrap.appendChild(typeBadge);
-
-      const info = document.createElement("div");
-      info.className = "library-info";
-
-      const name = document.createElement("h3");
-      setText(name, item.name);
-      info.appendChild(name);
-
-      if (item.description) {
-        const desc = document.createElement("p");
-        setText(desc, item.description);
-        info.appendChild(desc);
-      }
-
-      card.appendChild(imgWrap);
-      card.appendChild(info);
-
-      // 削除ボタンは「追加した部品/pack」にだけ付く (自作は常に在庫なので外せない)
-      if (isAdded) {
-        const rm = document.createElement("button");
-        rm.type = "button";
-        rm.className = "library-remove";
-        rm.title = "道具箱から削除";
-        rm.setAttribute("aria-label", (item.name || "この部品") + "を道具箱から削除");
-        rm.textContent = "×";
-        rm.addEventListener("click", async function (e) {
-          e.stopPropagation();
-          rm.disabled = true;
-          try {
-            const res = await fetch(
-              API_URL + "/" + encodeURIComponent(type) + "/" + encodeURIComponent(id),
-              { method: "DELETE", headers: AteneyAuth.getAuthHeaders() }
-            );
-            if (res.status === 401) { location.href = "/login/"; return; }
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            card.remove();
-            if (!container.querySelector(".library-card")) {
-              showState("🌙", EMPTY_MSG);
-            }
-          } catch (err) {
-            console.error(err);
-            rm.disabled = false;
-            rm.classList.add("rm-failed");
-            rm.title = "削除できませんでした。もう一度お試しください";
-            setTimeout(function () { rm.classList.remove("rm-failed"); }, 1500);
-          }
-        });
-        card.appendChild(rm);
-      }
-
-      card.addEventListener("click", function () {
-        if (!id || !TYPE_HREF[type]) return;
-        location.href = TYPE_HREF[type](id);
-      });
-      return card;
+      return thumb;
     }
 
-    const EMPTY_MSG = 'まだ道具箱が空っぽ。<a href="/">ホーム</a>で部品を探そう';
+    function createRow(item, index) {
+      // button入れ子は無効なHTMLなので、行はdiv + role="button"にする
+      var row = document.createElement("div");
+      row.className = "lib-row";
+      row.setAttribute("role", "button");
+      row.setAttribute("tabindex", "0");
+      row.style.setProperty("--row-index", index);
 
-    async function loadLibrary() {
-      // 復号待ち (AES-GCM)
-      if (window.AteneyAuth && AteneyAuth.ready) {
-        try { await AteneyAuth.ready; } catch (e) {}
+      row.appendChild(createThumb(item));
+
+      var info = document.createElement("div");
+      info.className = "lib-row-info";
+
+      var nameLine = document.createElement("div");
+      nameLine.className = "lib-row-name";
+
+      var kind = document.createElement("span");
+      kind.className = "lib-kind" + (item.item_type === "pack" ? " k-pack" : "");
+      kind.textContent = KIND_LABEL[item.item_type] || item.item_type;
+      nameLine.appendChild(kind);
+
+      var nm = document.createElement("span");
+      nm.style.overflow = "hidden";
+      nm.style.textOverflow = "ellipsis";
+      setText(nm, item.name);
+      nameLine.appendChild(nm);
+      info.appendChild(nameLine);
+
+      var dates = document.createElement("div");
+      dates.className = "lib-row-dates";
+      if (item.source === "own") {
+        var c = document.createElement("span");
+        setText(c, "作成: " + fmtDate(item.sort_at));
+        dates.appendChild(c);
+        // 自作packは編集日も出す (me/packからマージ)
+        if (item.item_type === "pack" && packInfo[item.item_id] && packInfo[item.item_id].updated_at) {
+          var e = document.createElement("span");
+          setText(e, "編集: " + fmtDate(packInfo[item.item_id].updated_at));
+          dates.appendChild(e);
+        }
+      } else {
+        var a = document.createElement("span");
+        setText(a, "追加: " + fmtDate(item.sort_at));
+        dates.appendChild(a);
       }
-      const loggedIn = !!(window.AteneyAuth && AteneyAuth.isLoggedIn());
-      if (!loggedIn) {
-        showState("🔑", '道具箱を使うには<a href="/login/" style="color:var(--accent);font-weight:600">ログイン</a>が必要です');
+      info.appendChild(dates);
+      row.appendChild(info);
+
+      // ··· メニュー (行クリックと分離)
+      var menuBtn = document.createElement("button");
+      menuBtn.type = "button";
+      menuBtn.className = "lib-menu-btn";
+      menuBtn.textContent = "···";
+      menuBtn.setAttribute("aria-label", (item.name || "この部品") + "のメニュー");
+      menuBtn.addEventListener("click", function(ev) {
+        ev.stopPropagation();
+        openMenu(item);
+      });
+      row.appendChild(menuBtn);
+
+      row.addEventListener("click", function() {
+        openDetail(item);
+      });
+      row.addEventListener("keydown", function(ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openDetail(item);
+        }
+      });
+      return row;
+    }
+
+    function renderList() {
+      libList.innerHTML = "";
+      clearState();
+      var vis = visibleItems();
+      if (!vis.length) {
+        showState("🌙", "この種類はまだ空っぽ");
+        return;
+      }
+      vis.forEach(function(it, i) {
+        libList.appendChild(createRow(it, i));
+      });
+    }
+
+    /* --- ··· メニュー --- */
+    function closeMenu() {
+      libOverlay.classList.remove("active");
+      libPopup.classList.remove("active");
+      currentItem = null;
+    }
+    function openMenu(item) {
+      currentItem = item;
+      libPopupContent.innerHTML = "";
+
+      function mk(label, cls, fn, disabled) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "lib-popup-item" + (cls ? " " + cls : "");
+        setText(b, label);
+        if (disabled) b.disabled = true;
+        b.addEventListener("click", fn);
+        libPopupContent.appendChild(b);
+        return b;
+      }
+
+      if (item.source === "own") {
+        var isRag = item.item_type === "rag";
+        // 公開/非公開切替 (ragは公開概念なし)
+        if (!isRag) {
+          var info = packInfo[item.item_id];
+          var isPublic = item.item_type === "pack"
+            ? (info ? !!info.is_public : !!item.is_public)
+            : !!item.is_public;
+          mk(isPublic ? "非公開にする" : "公開する", "", function() { togglePublish(item, isPublic); });
+        }
+        mk("名前の変更", "", function() { openRename(item); });
+        mk("削除", "danger", function() { removeOwn(item); });
+      } else {
+        mk("道具箱から削除", "danger", function() { removeAdded(item); });
+      }
+
+      libOverlay.classList.add("active");
+      libPopup.classList.add("active");
+    }
+    libOverlay.addEventListener("click", closeMenu);
+
+    function refreshAfterAction() {
+      closeMenu();
+      loadAll();
+    }
+
+    // 公開切替 (pack/character/scene)。pack_only中間状態はcreate編集ページで扱う
+    function togglePublish(item, isPublic) {
+      if (menuBusy) return;
+      menuBusy = true;
+      api("/api/" + item.item_type + "/" + item.item_id, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_public: !isPublic }),
+      })
+        .then(function(res) {
+          if (res.status === 401) { location.href = "/login/"; return; }
+          if (!res.ok) return res.json().catch(function() { return {}; }).then(function(d) {
+            throw new Error(d.error || "HTTP " + res.status);
+          });
+          refreshAfterAction();
+        })
+        .catch(function(err) {
+          console.error(err);
+          alert("公開設定を変更できなかった 😴");
+        })
+        .then(function() { menuBusy = false; });
+    }
+
+    function removeOwn(item) {
+      var msg = item.item_type === "pack"
+        ? "packを削除する？ 導入した人の道具箱からも消えるよ。巻き戻しはできないよ"
+        : "「" + (item.name || "") + "」を削除する？ 巻き戻しはできないよ";
+      if (!confirm(msg)) return;
+      api("/api/" + item.item_type + "/" + item.item_id, { method: "DELETE" })
+        .then(function(res) {
+          if (res.status === 401) { location.href = "/login/"; return; }
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          refreshAfterAction();
+        })
+        .catch(function(err) {
+          console.error(err);
+          alert("削除できなかった 😴");
+        });
+    }
+
+    function removeAdded(item) {
+      api("/api/library/" + item.item_type + "/" + item.item_id, { method: "DELETE" })
+        .then(function(res) {
+          if (res.status === 401) { location.href = "/login/"; return; }
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          refreshAfterAction();
+        })
+        .catch(function(err) {
+          console.error(err);
+          alert("道具箱から削除できなかった 😴");
+        });
+    }
+
+    /* --- 名前の変更ダイアログ --- */
+    function openRename(item) {
+      closeMenu();
+      currentItem = item;
+      setText(libRenameTitle, item.item_type === "rag" ? "タイトルの変更" : "名前の変更");
+      libRenameInput.value = item.name || "";
+      libRenameDlg.classList.add("active");
+      setTimeout(function() { libRenameInput.focus(); libRenameInput.select(); }, 50);
+    }
+    function closeRename() {
+      libRenameDlg.classList.remove("active");
+      libRenameInput.value = "";
+      currentItem = null;
+    }
+    function confirmRename() {
+      var item = currentItem;
+      if (!item || menuBusy) return;
+      var newName = libRenameInput.value.trim();
+      if (!newName) return;
+      menuBusy = true;
+      var body = {};
+      body[item.item_type === "rag" ? "title" : "name"] = newName;
+      api("/api/" + item.item_type + "/" + item.item_id, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+        .then(function(res) {
+          if (res.status === 401) { location.href = "/login/"; return; }
+          if (!res.ok) return res.json().catch(function() { return {}; }).then(function(d) {
+            throw new Error(d.error || "HTTP " + res.status);
+          });
+          closeRename();
+          loadAll();
+        })
+        .catch(function(err) {
+          console.error(err);
+          alert("名前を変更できなかった 😴");
+        })
+        .then(function() { menuBusy = false; });
+    }
+    libRenameOk.addEventListener("click", confirmRename);
+    libRenameCancel.addEventListener("click", closeRename);
+    libRenameInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") confirmRename();
+    });
+
+    document.addEventListener("keydown", function(e) {
+      if (e.key !== "Escape") return;
+      if (libRenameDlg.classList.contains("active")) {
+        closeRename();
+      } else {
+        closeMenu();
+      }
+    });
+
+    /* --- 詳細ビュー --- */
+    function backToList() {
+      libDetail.classList.remove("active");
+      libApp.classList.remove("hidden");
+      document.title = "Library - ateney";
+    }
+    libBackBtn.addEventListener("click", backToList);
+
+    function section(titleText, contentNode) {
+      var sec = document.createElement("div");
+      sec.className = "lib-section";
+      var t = document.createElement("div");
+      t.className = "lib-section-title";
+      setText(t, titleText);
+      sec.appendChild(t);
+      sec.appendChild(contentNode);
+      return sec;
+    }
+
+    function subsection(titleText, entries) {
+      // entries: [{name, desc}]
+      var sub = document.createElement("div");
+      sub.className = "lib-subsection";
+      var t = document.createElement("div");
+      t.className = "lib-subsection-title";
+      setText(t, titleText);
+      sub.appendChild(t);
+      var wrap = document.createElement("div");
+      wrap.className = "lib-subsection-items";
+      if (!entries.length) {
+        var none = document.createElement("div");
+        none.className = "lib-subsection-item";
+        setText(none, "—");
+        wrap.appendChild(none);
+      } else {
+        entries.forEach(function(en) {
+          var it = document.createElement("div");
+          it.className = "lib-subsection-item";
+          var nm = document.createElement("span");
+          nm.className = "sub-name";
+          setText(nm, en.name);
+          it.appendChild(nm);
+          if (en.desc) {
+            var d = document.createElement("span");
+            d.className = "sub-desc";
+            setText(d, en.desc);
+            it.appendChild(d);
+          }
+          wrap.appendChild(it);
+        });
+      }
+      sub.appendChild(wrap);
+      return sub;
+    }
+
+    function textNode(text) {
+      var div = document.createElement("div");
+      div.className = "lib-section-content";
+      setText(div, text);
+      return div;
+    }
+
+    function badgesNode(item) {
+      var div = document.createElement("div");
+      div.className = "lib-badges";
+      if (item.source === "added") {
+        var b1 = document.createElement("span");
+        b1.className = "lib-badge";
+        b1.textContent = "追加した部品";
+        div.appendChild(b1);
+      }
+      if (item.item_type !== "rag" && item.is_public) {
+        var b2 = document.createElement("span");
+        b2.className = "lib-badge b-public";
+        b2.textContent = "公開中";
+        div.appendChild(b2);
+      }
+      if (item.item_type !== "rag" && item.item_type !== "pack" && item.pack_only) {
+        var b3 = document.createElement("span");
+        b3.className = "lib-badge b-packonly";
+        b3.textContent = "pack専用";
+        div.appendChild(b3);
+      }
+      if (div.childNodes.length === 0) return null;
+      return div;
+    }
+
+    function renderDetailCommon(item, data) {
+      // 日付
+      libDetailDates.innerHTML = "";
+      var dates = [];
+      if (item.source === "own") {
+        dates.push(["作成日", fmtDate(item.sort_at)]);
+        if (item.item_type === "pack" && data && data.pack && data.pack.updated_at) {
+          dates.push(["編集日", fmtDate(data.pack.updated_at)]);
+        } else if (item.item_type !== "pack") {
+          // me/:type/:id にupdated_atがあれば使う
+          var full = data && (data.character || data.scene || data.rag || data.document);
+          if (full && full.updated_at) dates.push(["編集日", fmtDate(full.updated_at)]);
+        }
+      } else {
+        dates.push(["追加日", fmtDate(item.sort_at)]);
+      }
+      dates.forEach(function(d) {
+        var di = document.createElement("div");
+        di.className = "lib-date-item";
+        var l = document.createElement("div");
+        l.className = "lib-date-label";
+        setText(l, d[0]);
+        var v = document.createElement("div");
+        v.className = "lib-date-value";
+        setText(v, d[1]);
+        di.appendChild(l); di.appendChild(v);
+        libDetailDates.appendChild(di);
+      });
+
+      // バッジ
+      var badges = badgesNode(item);
+      if (badges) libDetailDates.appendChild(badges);
+    }
+
+    function openDetail(item) {
+      currentItem = item;
+      setText(libDetailTitle, item.name || TYPE_LABEL_DETAIL[item.item_type]);
+      document.title = (item.name || "Library") + " - ateney";
+      libDetailBody.innerHTML = '<div class="lib-state">読み込み中...</div>';
+      libDetailDates.innerHTML = "";
+      libApp.classList.add("hidden");
+      libDetail.classList.add("active");
+      window.scrollTo(0, 0);
+
+      var finish = function(data) {
+        renderDetailCommon(item, data);
+        renderDetailBody(item, data);
+      };
+
+      if (item.item_type === "pack") {
+        if (item.source === "own") {
+          api("/api/me/pack/" + item.item_id + "?expand=1")
+            .then(function(res) {
+              if (res.status === 401) { location.href = "/login/"; return null; }
+              if (!res.ok) throw new Error("HTTP " + res.status);
+              return res.json();
+            })
+            .then(function(data) { if (data) finish(data); })
+            .catch(function() { libDetailBody.innerHTML = ""; libDetailBody.appendChild(textNode("読み込めませんでした")); });
+        } else {
+          api("/api/pack/" + item.item_id)
+            .then(function(res) {
+              if (res.status === 401) { location.href = "/login/"; return null; }
+              if (!res.ok) throw new Error("HTTP " + res.status);
+              return res.json();
+            })
+            .then(function(data) { if (data) finish(data); })
+            .catch(function() { libDetailBody.innerHTML = ""; libDetailBody.appendChild(textNode("読み込めませんでした")); });
+        }
         return;
       }
 
-      showSkeletons(4);
-
-      try {
-        const response = await fetch(API_URL, { headers: AteneyAuth.getAuthHeaders() });
-
-        if (response.status === 401) {
-          location.href = "/login/";
-          return;
-        }
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        const items = data.items || [];
-
-        if (!Array.isArray(items) || items.length === 0) {
-          showState("🌙", EMPTY_MSG);
-          return;
-        }
-
-        container.innerHTML = "";
-        items.forEach((item, i) => {
-          container.appendChild(createCard(item, i));
-        });
-
-      } catch (err) {
-        console.error("Failed to load library:", err);
-        showState("⚠️", "道具箱を読み込めませんでした");
+      // 部品: 自作なら me/:type/:id (フル)、追加分は公開詳細 (ragは無いので一覧データのみ)
+      if (item.source === "own") {
+        api("/api/me/" + item.item_type + "/" + item.item_id)
+          .then(function(res) {
+            if (res.status === 401) { location.href = "/login/"; return null; }
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.json();
+          })
+          .then(function(data) { if (data) finish(data); })
+          .catch(function() { libDetailBody.innerHTML = ""; libDetailBody.appendChild(textNode("読み込めませんでした")); });
+      } else if (item.item_type === "rag") {
+        finish(null); // 追加RAGはこれ以上の情報を持たない (SoC: 他人のrag全文は取れない)
+      } else {
+        api("/api/" + item.item_type + "/" + item.item_id)
+          .then(function(res) {
+            if (!res.ok) return null; // 非公開化された等
+            return res.json();
+          })
+          .then(function(data) { finish(data || null); })
+          .catch(function() { finish(null); });
       }
     }
 
-    loadLibrary();
+    function renderDetailBody(item, data) {
+      libDetailBody.innerHTML = "";
+      var full = data ? (data.character || data.scene || data.rag || data.document || null) : null;
+
+      if (item.item_type === "pack") {
+        var pk = data ? (data.pack || {}) : {};
+        // 説明
+        if (pk.description || item.description) {
+          libDetailBody.appendChild(section("説明", textNode(pk.description || item.description)));
+        }
+        // 同梱物
+        var contentSec = document.createElement("div");
+        contentSec.className = "lib-section";
+        var ct = document.createElement("div");
+        ct.className = "lib-section-title";
+        setText(ct, "内容");
+        contentSec.appendChild(ct);
+
+        var ch = data ? data.character : null;
+        contentSec.appendChild(subsection("Character", ch
+          ? [{ name: ch.name, desc: ch.description || "" }]
+          : []));
+        var sc = data ? data.scene : null;
+        contentSec.appendChild(subsection("Scene", sc
+          ? [{ name: sc.name, desc: sc.description || "" }]
+          : []));
+        var rags = (data && data.rags) ? data.rags : [];
+        contentSec.appendChild(subsection("RAG (" + rags.length + ")", rags.map(function(r) {
+          return { name: r.title, desc: r.excerpt || "" };
+        })));
+        libDetailBody.appendChild(contentSec);
+        return;
+      }
+
+      // character / scene
+      if (item.item_type === "character" || item.item_type === "scene") {
+        var desc = (full && full.description) || item.description;
+        if (desc) libDetailBody.appendChild(section("説明", textNode(desc)));
+        if (item.item_type === "character") {
+          if (full && full.personality) libDetailBody.appendChild(section("性格", textNode(full.personality)));
+          if (full && full.greeting) libDetailBody.appendChild(section("挨拶", textNode("「" + full.greeting + "」")));
+        }
+        if (item.item_type === "scene" && full && full.setting) {
+          libDetailBody.appendChild(section("場面設定", textNode(full.setting)));
+        }
+        var tags = (full && (full.tags || full.genre)) || item.tags;
+        if (tags) libDetailBody.appendChild(section("タグ", textNode(tags)));
+        return;
+      }
+
+      // rag
+      var content = full ? full.content : item.description;
+      if (content) {
+        // 長文は2000字で打ち切り (全文は create編集ページで)
+        var shown = String(content);
+        if (shown.length > 2000) shown = shown.slice(0, 2000) + "...";
+        libDetailBody.appendChild(section("内容", textNode(shown)));
+      }
+      if (item.tags) libDetailBody.appendChild(section("タグ", textNode(item.tags)));
+    }
+
+    /* --- フィルタ --- */
+    libFilter.addEventListener("click", function(e) {
+      var btn = e.target.closest("button[data-type]");
+      if (!btn) return;
+      currentFilter = btn.getAttribute("data-type");
+      libFilter.querySelectorAll("button").forEach(function(b) {
+        b.classList.toggle("active", b === btn);
+      });
+      renderList();
+    });
+
+    /* --- 読み込み --- */
+    function loadAll() {
+      // トークン復号待ち (AES-GCM)
+      var ready = (window.AteneyAuth && AteneyAuth.ready)
+        ? Promise.resolve(AteneyAuth.ready).catch(function() {})
+        : Promise.resolve();
+
+      ready.then(function() {
+        if (!window.AteneyAuth || !AteneyAuth.isLoggedIn()) {
+          libList.innerHTML = "";
+          showState("🔑", '道具箱を使うには<a href="/login/" style="color:var(--accent);font-weight:600">ログイン</a>が必要です');
+          return;
+        }
+        showSkeletons();
+
+        var libReq = api("/api/library").then(function(res) {
+          if (res.status === 401) { location.href = "/login/"; return null; }
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.json();
+        });
+        // 自作packの dates/is_public 補強 (なくても動く。失敗は無視)
+        var packReq = api("/api/me/pack?limit=100").then(function(res) {
+          return res.ok ? res.json() : { packs: [] };
+        }).catch(function() { return { packs: [] }; });
+
+        Promise.all([libReq, packReq])
+          .then(function(results) {
+            var data = results[0];
+            if (!data) return;
+            items = data.items || [];
+            (results[1].packs || []).forEach(function(pk) {
+              packInfo[pk.id] = pk;
+            });
+            renderList();
+          })
+          .catch(function(err) {
+            console.error("Failed to load library:", err);
+            libList.innerHTML = "";
+            showState("⚠️", "道具箱を読み込めませんでした");
+          });
+      });
+    }
+
+    loadAll();
