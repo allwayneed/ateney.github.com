@@ -24,6 +24,13 @@ var TYPE = "character";
       for (var i = 0; i < form.elements.length; i++) {
         var el = form.elements[i];
         if (!el.name) continue;
+        if (el.name === "visibility" && el.type === "radio") {
+          // 3択 (Library本実装): pack_only > is_public > 非公開 の優先で復元
+          el.checked = data.pack_only
+            ? el.value === "pack"
+            : (data.is_public ? el.value === "public" : el.value === "private");
+          continue;
+        }
         if (el.type === "checkbox") { el.checked = !!data[el.name]; continue; }
         if (el.name in data) el.value = data[el.name] == null ? "" : data[el.name];
       }
@@ -52,6 +59,13 @@ var TYPE = "character";
       for (var i = 0; i < form.elements.length; i++) {
         var el = form.elements[i];
         if (!el.name) continue;
+        if (el.type === "radio") {
+          if (el.name === "visibility" && el.checked) {
+            payload.is_public = el.value === "public";
+            payload.pack_only = el.value === "pack";
+          }
+          continue;
+        }
         if (el.type === "checkbox") { payload.is_public = el.checked; continue; }
         payload[el.name] = el.value.trim();
       }

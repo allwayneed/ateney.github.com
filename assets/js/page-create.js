@@ -60,7 +60,7 @@
     }
 
     // 20件ブロック読み込み (API側ページング ?page=N。デフォルト20/block)
-    var listState = { character: { page: 1 }, scene: { page: 1 }, rag: { page: 1 } };
+    var listState = { character: { page: 1 }, scene: { page: 1 }, rag: { page: 1 }, pack: { page: 1 } };
 
     function loadItems(type, append) {
       if (!append) {
@@ -82,7 +82,7 @@
           return res.json();
         })
         .then(function(data) {
-          var items = data.characters || data.scenes || data.rags || data.documents || data.items || data || [];
+          var items = data.characters || data.scenes || data.rags || data.packs || data.documents || data.items || data || [];
           var pg = data.pagination || {};
           if (!append) itemList.innerHTML = "";
           if (!Array.isArray(items) || items.length === 0) {
@@ -96,7 +96,10 @@
 
             // 行本体 → 詳細ページ (404 routerが /{type}/{id}/ を処理)
             var a = document.createElement("a");
-            a.href = "/" + type + "/" + itemId + "/";
+            // packは公開/非公開に関わらず編集ページへ (Library本実装)
+            a.href = (type === "pack")
+              ? "/create/pack/?id=" + encodeURIComponent(itemId)
+              : "/" + type + "/" + itemId + "/";
             var thumb = document.createElement("div");
             thumb.className = "item-thumb";
             if (item.avatar_url || item.image_url) {

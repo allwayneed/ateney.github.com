@@ -209,3 +209,24 @@ body.dark .btn-primary {
   .btn { padding: 10px 18px; font-size: 0.84rem; }
   .item-actions .icon-btn { width: 34px; height: 34px; }
 }
+
+/* 公開設定 3択 (Library本実装 2026-10-08) — create配下のみで使用 */
+.vis-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 6px 0 2px;
+}
+
+/* pack作成UI (Library本実装 2026-10-08) — create配下のみで使用 */
+.pk-rag-picks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.pk-rag-pick { margin: 0; }
