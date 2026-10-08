@@ -441,8 +441,9 @@
     // =========================
     function renderPack(d) {
       var pk = d.pack || {};
-      var ch = d.character;
-      var sc = d.scene;
+      // 複数同梱対応 (2026-10-08): APIは characters/scenes/rags の配列を返す
+      var chars = d.characters || (d.character ? [d.character] : []);
+      var scenes = d.scenes || (d.scene ? [d.scene] : []);
       var rags = d.rags || [];
 
       document.title = (pk.name || "Pack") + " - ateney";
@@ -473,27 +474,33 @@
         html += '<div class="char-section"><h2>説明</h2><p id="char-desc"></p></div>';
       }
 
-      // 同梱キャラ (pack_onlyでもここに全部見える)
-      if (ch && ch.id) {
-        var chAvatar = safeAvatarUrl(ch.avatar_url)
-          ? '<img class="pk-part-avatar" src="' + escapeHtml(ch.avatar_url) + '" alt="' + escapeHtml(ch.name || "character") + '">'
-          : '<div class="pk-part-avatar pk-part-fallback">' + escapeHtml((ch.name || "?").charAt(0)) + '</div>';
-        html += '<div class="char-section pk-part">';
-        html += '<h2>同梱キャラ</h2>';
-        html += '<div class="pk-part-head">' + chAvatar + '<h3 class="pk-part-name"></h3></div>';
-        html += '<p class="pk-part-body pk-ch-desc"></p>';
-        html += '<p class="pk-part-body pk-subtle pk-ch-personality"></p>';
-        html += '<p class="pk-part-body pk-greeting pk-ch-greeting"></p>';
+      // 同梱キャラ (pack_onlyでもここに全部見える。複数同梱対応でループ化)
+      if (chars.length) {
+        html += '<div class="char-section"><h2>同梱キャラ (' + chars.length + ')</h2>';
+        chars.forEach(function(c) {
+          var chAvatar = safeAvatarUrl(c.avatar_url)
+            ? '<img class="pk-part-avatar" src="' + escapeHtml(c.avatar_url) + '" alt="' + escapeHtml(c.name || "character") + '">'
+            : '<div class="pk-part-avatar pk-part-fallback">' + escapeHtml((c.name || "?").charAt(0)) + '</div>';
+          html += '<div class="char-section pk-part">';
+          html += '<div class="pk-part-head">' + chAvatar + '<h3 class="pk-part-name"></h3></div>';
+          html += '<p class="pk-part-body pk-ch-desc"></p>';
+          html += '<p class="pk-part-body pk-subtle pk-ch-personality"></p>';
+          html += '<p class="pk-part-body pk-greeting pk-ch-greeting"></p>';
+          html += '</div>';
+        });
         html += '</div>';
       }
 
-      // 同梱シーン
-      if (sc && sc.id) {
-        html += '<div class="char-section pk-part">';
-        html += '<h2>同梱シーン</h2>';
-        html += '<h3 class="pk-part-name"></h3>';
-        html += '<p class="pk-part-body pk-sc-desc"></p>';
-        html += '<p class="pk-part-body pk-subtle pk-sc-setting"></p>';
+      // 同梱シーン (複数)
+      if (scenes.length) {
+        html += '<div class="char-section"><h2>同梱シーン (' + scenes.length + ')</h2>';
+        scenes.forEach(function() {
+          html += '<div class="char-section pk-part">';
+          html += '<h3 class="pk-part-name"></h3>';
+          html += '<p class="pk-part-body pk-sc-desc"></p>';
+          html += '<p class="pk-part-body pk-subtle pk-sc-setting"></p>';
+          html += '</div>';
+        });
         html += '</div>';
       }
 
@@ -515,24 +522,24 @@
       setText(document.getElementById("char-name"), pk.name);
       setText(document.getElementById("char-desc"), pk.description);
 
-      // 各パーツを安全にDOM設定 (XSS対策 — textContent)
+      // 各パーツを安全にDOM設定 (XSS対策 — textContent)。DOM順 = キャラ→シーン
       var root = content.querySelector(".pk-detail");
-      var pkName = root ? root.querySelectorAll(".pk-part-name") : [];
-      if (ch && ch.id && pkName.length > 0) {
-        setText(pkName[0], ch.name);
-        var chBox = root.querySelector(".pk-part");
-        setText(chBox.querySelector(".pk-ch-desc"), ch.description);
-        setText(chBox.querySelector(".pk-ch-personality"), ch.personality ? "性格: " + ch.personality : "");
-        setText(chBox.querySelector(".pk-ch-greeting"), ch.greeting ? "「" + ch.greeting + "」" : "");
-      }
-      if (sc && sc.id && pkName.length > (ch && ch.id ? 1 : 0)) {
-        var scBox = root.querySelectorAll(".pk-part")[ch && ch.id ? 1 : 0];
-        if (scBox) {
-          setText(scBox.querySelector(".pk-part-name"), sc.name);
-          setText(scBox.querySelector(".pk-sc-desc"), sc.description);
-          setText(scBox.querySelector(".pk-sc-setting"), sc.setting);
-        }
-      }
+      var partBoxes = root ? root.querySelectorAll(".pk-part") : [];
+      chars.forEach(function(c, i) {
+        var box = partBoxes[i];
+        if (!box) return;
+        setText(box.querySelector(".pk-part-name"), c.name);
+        setText(box.querySelector(".pk-ch-desc"), c.description);
+        setText(box.querySelector(".pk-ch-personality"), c.personality ? "性格: " + c.personality : "");
+        setText(box.querySelector(".pk-ch-greeting"), c.greeting ? "「" + c.greeting + "」" : "");
+      });
+      scenes.forEach(function(s, i) {
+        var box = partBoxes[chars.length + i];
+        if (!box) return;
+        setText(box.querySelector(".pk-part-name"), s.name);
+        setText(box.querySelector(".pk-sc-desc"), s.description);
+        setText(box.querySelector(".pk-sc-setting"), s.setting);
+      });
       var ragItems = root ? root.querySelectorAll(".pk-rag-list li") : [];
       rags.forEach(function(r, i) {
         if (!ragItems[i]) return;
