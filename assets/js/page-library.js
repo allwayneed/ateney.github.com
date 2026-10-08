@@ -550,14 +550,15 @@
         setText(ct, "内容");
         contentSec.appendChild(ct);
 
-        var ch = data ? data.character : null;
-        contentSec.appendChild(subsection("Character", ch
-          ? [{ name: ch.name, desc: ch.description || "" }]
-          : []));
-        var sc = data ? data.scene : null;
-        contentSec.appendChild(subsection("Scene", sc
-          ? [{ name: sc.name, desc: sc.description || "" }]
-          : []));
+        // 複数同梱 (2026-10-08): characters/scenes/rags は配列
+        var chars = (data && data.characters) ? data.characters : [];
+        contentSec.appendChild(subsection("Character (" + chars.length + ")", chars.map(function(c) {
+          return { name: c.name, desc: c.description || "" };
+        })));
+        var scenes = (data && data.scenes) ? data.scenes : [];
+        contentSec.appendChild(subsection("Scene (" + scenes.length + ")", scenes.map(function(s) {
+          return { name: s.name, desc: s.description || "" };
+        })));
         var rags = (data && data.rags) ? data.rags : [];
         contentSec.appendChild(subsection("RAG (" + rags.length + ")", rags.map(function(r) {
           return { name: r.title, desc: r.excerpt || "" };

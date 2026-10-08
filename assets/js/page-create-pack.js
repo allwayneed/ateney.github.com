@@ -25,47 +25,35 @@
       return fetch(apiBase + path, opts);
     }
 
-    /* ---- 自分の部品一覧を取得してセレクト/チェックリストに流す ---- */
-    function fillCharacters(characters) {
-      var sel = document.getElementById("pk-char-select");
-      // me/character は自作全件を返す (pack_only部品も含む → 同梱選択肢になる)
-      characters.forEach(function(c) {
-        var opt = document.createElement("option");
-        opt.value = c.id;
-        opt.textContent = c.name || "Untitled";
-        sel.appendChild(opt);
-      });
-      return sel;
-    }
-    function fillScenes(scenes) {
-      var sel = document.getElementById("pk-scene-select");
-      scenes.forEach(function(s) {
-        var opt = document.createElement("option");
-        opt.value = s.id;
-        opt.textContent = s.name || "Untitled";
-        sel.appendChild(opt);
-      });
-      return sel;
-    }
-    function fillRags(rags) {
-      var wrap = document.getElementById("pk-rag-list");
+    /* ---- 自分の部品一覧を取得してチェックリストに流す (複数同梱対応) ---- */
+    function fillPickList(wrapId, entries, labelOf) {
+      var wrap = document.getElementById(wrapId);
       wrap.innerHTML = "";
-      if (!rags.length) {
-        wrap.innerHTML = '<p class="hint">RAGをまだ作っていないなら、ここは空のままでOK</p>';
+      if (!entries.length) {
+        wrap.innerHTML = '<p class="hint">まだ作っていないなら、空のままでOK</p>';
         return;
       }
-      rags.forEach(function(r) {
+      entries.forEach(function(en) {
         var label = document.createElement("label");
-        label.className = "check-row pk-rag-pick";
+        label.className = "check-row pk-pick";
         var cb = document.createElement("input");
         cb.type = "checkbox";
-        cb.value = r.id;
+        cb.value = en.id;
         var span = document.createElement("span");
-        span.textContent = r.title || "Untitled";
+        span.textContent = labelOf(en);
         label.appendChild(cb);
         label.appendChild(span);
         wrap.appendChild(label);
       });
+    }
+    function fillCharacters(characters) {
+      fillPickList("pk-char-list", characters, function(c) { return c.name || "Untitled"; });
+    }
+    function fillScenes(scenes) {
+      fillPickList("pk-scene-list", scenes, function(s) { return s.name || "Untitled"; });
+    }
+    function fillRags(rags) {
+      fillPickList("pk-rag-list", rags, function(r) { return r.title || "Untitled"; });
     }
 
     function loadParts() {
@@ -100,13 +88,15 @@
           document.getElementById("pk-description").value = pk.description || "";
           document.getElementById("pk-tags").value = pk.tags || "";
           document.getElementById("pk-genre").value = pk.genre || "";
-          document.getElementById("pk-char-select").value = pk.character_id || "";
-          document.getElementById("pk-scene-select").value = pk.scene_id || "";
           document.querySelector('input[name="is_public"]').checked = !!pk.is_public;
-          var ragIds = String(pk.rag_ids || "").split(",").filter(Boolean);
-          document.querySelectorAll("#pk-rag-list input[type=checkbox]").forEach(function(cb) {
-            cb.checked = ragIds.indexOf(cb.value) !== -1;
-          });
+          // 複数同梱: CSV列をcheckboxに復元
+          [["pk-char-list", pk.character_ids], ["pk-scene-list", pk.scene_ids], ["pk-rag-list", pk.rag_ids]]
+            .forEach(function(pair) {
+              var ids = String(pair[1] || "").split(",").filter(Boolean);
+              document.querySelectorAll("#" + pair[0] + " input[type=checkbox]").forEach(function(cb) {
+                cb.checked = ids.indexOf(cb.value) !== -1;
+              });
+            });
           document.getElementById("deleteBtn").hidden = false;
           setStatus("");
         })
@@ -121,17 +111,24 @@
         description: document.getElementById("pk-description").value.trim(),
         tags: document.getElementById("pk-tags").value.trim(),
         genre: document.getElementById("pk-genre").value.trim(),
-        character_id: document.getElementById("pk-char-select").value || null,
-        scene_id: document.getElementById("pk-scene-select").value || null,
+        character_ids: [],
+        scene_ids: [],
         rag_ids: [],
         is_public: document.querySelector('input[name="is_public"]').checked
       };
       if (!payload.name) { setStatus("名前は必須だよ", true); return; }
-      document.querySelectorAll("#pk-rag-list input[type=checkbox]:checked").forEach(function(cb) {
-        payload.rag_ids.push(cb.value);
-      });
+      [["pk-char-list", "character_ids"], ["pk-scene-list", "scene_ids"], ["pk-rag-list", "rag_ids"]]
+        .forEach(function(pair) {
+          document.querySelectorAll("#" + pair[0] + " input[type=checkbox]:checked").forEach(function(cb) {
+            payload[pair[1]].push(cb.value);
+          });
+        });
+      if (payload.character_ids.length > 10) { setStatus("キャラは10体までだよ", true); return; }
+      if (payload.scene_ids.length > 10) { setStatus("シーンは10つまでだよ", true); return; }
       if (payload.rag_ids.length > MAX_RAG) { setStatus("RAGは" + MAX_RAG + "個までだよ", true); return; }
-      if (!payload.rag_ids.length) payload.rag_ids = null;
+      ["character_ids", "scene_ids", "rag_ids"].forEach(function(k) {
+        if (!payload[k].length) payload[k] = null;
+      });
 
       document.getElementById("saveBtn").disabled = true;
       setStatus("保存中...");

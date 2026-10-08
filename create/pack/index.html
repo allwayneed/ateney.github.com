@@ -52,20 +52,20 @@
         </div>
 
         <div class="field">
-          <label for="pk-char-select">同梱キャラ (自分の作品から1体まで)</label>
-          <select id="pk-char-select" name="character_id">
-            <option value="">— 同梱しない —</option>
-          </select>
+          <label>同梱キャラ (自分の作品から最大10体)</label>
+          <div id="pk-char-list" class="pk-pick-list">
+            <p class="hint">読み込み中...</p>
+          </div>
         </div>
         <div class="field">
-          <label for="pk-scene-select">同梱シーン (自分の作品から1つまで)</label>
-          <select id="pk-scene-select" name="scene_id">
-            <option value="">— 同梱しない —</option>
-          </select>
+          <label>同梱シーン (自分の作品から最大10つ)</label>
+          <div id="pk-scene-list" class="pk-pick-list">
+            <p class="hint">読み込み中...</p>
+          </div>
         </div>
         <div class="field">
           <label>同梱RAG (自分の作品から最大20個)</label>
-          <div id="pk-rag-list" class="pk-rag-picks">
+          <div id="pk-rag-list" class="pk-pick-list">
             <p class="hint">読み込み中...</p>
           </div>
         </div>
