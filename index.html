@@ -3,7 +3,11 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.ateney-ai.wo* https://*.workers.dev; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+  <!-- CSP: XSS時の被害を縮小する。スクリプトはすべて外部ファイル (script-src 'self' のみ)。
+       インラインscriptはCSPで完全拒否されるため、新規JSは必ず assets/js/ に置くこと。
+       connect-src の workers.dev は ateney-api のホスト。Worker移転時はここも更新。 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://*.ateney-ai.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="ateney — キャラクター・シーン・RAGを作って遊ぶ場">
   <meta property="og:title" content="ateney">
@@ -17,263 +21,151 @@
   <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
   <script src="/config.js"></script>
 
-  <link rel="stylesheet" href="/common.css">
+    <link rel="stylesheet" href="/common.css">
   <style>
-    .hero-panel {
+/* CHARACTER GRID */
+
+    #character-list {
       display: grid;
-      grid-template-columns: 1.5fr 0.8fr;
-      gap: 22px;
-      align-items: stretch;
-      background: linear-gradient(145deg, rgba(255,255,255,0.7), rgba(237,242,255,0.8));
-      border: 1px solid var(--border);
-      border-radius: 28px;
-      padding: 28px;
-      box-shadow: 0 20px 48px var(--shadow);
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
     }
 
-    body.dark .hero-panel {
-      background: linear-gradient(145deg, rgba(17,24,39,0.92), rgba(19,29,45,0.92));
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 12px;
-      border-radius: 999px;
-      background: rgba(91, 108, 255, 0.12);
-      color: var(--accent-strong);
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-bottom: 16px;
-    }
-
-    .hero-copy {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .index-cta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 18px;
-    }
-
-    .primary-btn,
-    .secondary-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 46px;
-      padding: 0 18px;
-      border-radius: 14px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
-    }
-
-    .primary-btn {
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      color: white;
-      box-shadow: 0 14px 32px rgba(91,102,255,0.22);
-    }
-
-    .secondary-btn {
-      background: rgba(255,255,255,0.5);
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
-
-    body.dark .secondary-btn {
-      background: rgba(15,23,42,0.4);
-    }
-
-    .primary-btn:hover,
-    .secondary-btn:hover {
-      transform: translateY(-2px);
-    }
-
-    .hero-stats {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(120px, 1fr));
-      gap: 14px;
-    }
-
-    .hero-stat {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      min-height: 128px;
-      padding: 18px 16px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.5);
-      border: 1px solid var(--border);
-    }
-
-    body.dark .hero-stat {
-      background: rgba(15,23,42,0.4);
-    }
-
-    .hero-stat strong {
-      font-size: clamp(1.6rem, 2vw, 2.2rem);
-      letter-spacing: -0.05em;
-      font-weight: 800;
-      margin-bottom: 4px;
-    }
-
-    .hero-stat span {
-      color: var(--text-secondary);
-      font-size: 0.82rem;
-    }
-
-    .feature-strip {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
-      margin: 8px 0 28px;
-    }
-
-    .feature-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 16px;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: rgba(255,255,255,0.44);
-      color: var(--text);
-    }
-
-    body.dark .feature-item {
-      background: rgba(15,23,42,0.4);
-    }
-
-    .feature-item .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      box-shadow: 0 0 0 6px rgba(91,102,255,0.08);
-    }
-
-    .feature-item strong {
+    .character-card {
       display: block;
-      font-size: 0.95rem;
+      text-decoration: none;
+      color: inherit;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--bg-elevated);
+      cursor: pointer;
+
+      opacity: 0;
+      transform: translateY(20px) scale(0.97);
+      animation: card-in 0.5s var(--ease) forwards;
+
+      transition:
+        transform 0.3s var(--ease),
+        box-shadow 0.3s var(--ease),
+        border-color 0.3s var(--ease);
     }
 
-    .feature-item span {
-      color: var(--text-secondary);
-      font-size: 0.76rem;
+    @keyframes card-in {
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    .section-header {
+    .character-card { animation-delay: calc(var(--card-index, 0) * 70ms); }
+
+    .character-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 28px var(--shadow);
+      border-color: var(--accent);
+    }
+
+    .character-card:active {
+      transform: translateY(-1px) scale(0.99);
+    }
+
+    .character-card .card-image {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      background: var(--border);
+    }
+
+    .character-card .card-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.4s var(--ease);
+    }
+
+    .character-card:hover .card-image img {
+      transform: scale(1.08);
+    }
+
+    .card-image-fallback {
+      width: 100%; height: 100%;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin: 32px 0 18px;
-    }
-
-    .section-header h3 {
-      font-size: 1.2rem;
+      justify-content: center;
+      color: var(--text-secondary);
+      font-size: 2.5rem;
       font-weight: 700;
-      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
-    .section-header a {
-      color: var(--accent);
-      text-decoration: none;
-      font-size: 0.85rem;
-      font-weight: 700;
+    .character-info {
+      padding: 14px 16px;
     }
 
-    @media (max-width: 900px) {
-      .hero-panel {
-        grid-template-columns: 1fr;
+    .character-info h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 4px;
+      color: var(--text);
+    }
+
+    .character-info p {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* =========================
+       RESPONSIVE — スマホ対応
+    ========================= */
+
+    /* カードグリッド */
+    @media (max-width: 768px) {
+      #character-list {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 14px;
       }
-
-      .feature-strip {
-        grid-template-columns: 1fr;
+    }
+    @media (max-width: 480px) {
+      #character-list {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 10px;
       }
     }
+    @media (max-width: 360px) {
+      #character-list {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 8px;
+      }
+      .character-info { padding: 10px 12px; }
+      .character-info h3 { font-size: 0.88rem; }
+      .character-info p { font-size: 0.75rem; }
+    }
+
+
   </style>
 </head>
 
 <body>
 <script src="/assets/js/darkmode-early.js"></script>
 <script src="/auth.js"></script>
-<script src="/common.js"></script>
+  <script src="/common.js"></script>
 
-<main class="main">
-  <div class="main-inner">
-    <section class="hero-panel">
-      <div class="hero-copy">
-        <span class="eyebrow">Create • Explore • Share</span>
-        <h2>Build characters.<br>Shape scenes.<br>Tell stories.</h2>
-        <p>ateney は、キャラクター・シーン・RAG を作って遊ぶ場所です。アイデアを形にして、世界観を育てていきましょう。</p>
-        <div class="index-cta">
-          <a class="primary-btn" href="/create/">作品を作る</a>
-          <a class="secondary-btn" href="/library/">ライブラリを見る</a>
-        </div>
-      </div>
+  <!-- HEADER / OVERLAY / SLIDE MENU は common.js が注入する (Issue #9) -->
 
-      <div class="hero-stats" aria-label="サイトの特徴">
-        <div class="hero-stat">
-          <strong>3-step</strong>
-          <span>作る → 試す → 共有</span>
-        </div>
-        <div class="hero-stat">
-          <strong>RAG</strong>
-          <span>知識と世界観を結ぶ</span>
-        </div>
-        <div class="hero-stat">
-          <strong>Scene</strong>
-          <span>場面を作って育てる</span>
-        </div>
-        <div class="hero-stat">
-          <strong>World</strong>
-          <span>作品を拡張していく</span>
-        </div>
-      </div>
-    </section>
-
-    <div class="feature-strip" aria-label="機能の紹介">
-      <div class="feature-item">
-        <span class="dot" aria-hidden="true"></span>
-        <div>
-          <strong>Character-first</strong>
-          <span>人格と背景を簡単に設計</span>
-        </div>
-      </div>
-      <div class="feature-item">
-        <span class="dot" aria-hidden="true"></span>
-        <div>
-          <strong>Scene-driven</strong>
-          <span>状況が作品の軸になる</span>
-        </div>
-      </div>
-      <div class="feature-item">
-        <span class="dot" aria-hidden="true"></span>
-        <div>
-          <strong>Built to explore</strong>
-          <span>試行錯誤を止めない設計</span>
-        </div>
-      </div>
+  <main class="main">
+    <div class="main-inner">
+      <h2>Welcome to ateney</h2>
+      <p>だれかXで宣伝とかしないかな、してくれたらうれしいな。なんでかって？エゴサできるから。</p>
+      <div id="character-list"></div>
     </div>
-
-    <div class="section-header">
-      <h3>Recent works</h3>
-      <a href="/create/">作品を管理</a>
-    </div>
-
-    <div id="character-list"></div>
-  </div>
-</main>
+  </main>
 
 <script src="/assets/js/page-index.js"></script>
 </body>
