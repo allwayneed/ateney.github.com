@@ -467,20 +467,18 @@
 
   <main class="main">
     <div class="main-inner">
-      <h2>library <span style="font-size:0.85rem;font-weight:400;color:var(--text-secondary)">— あなたの道具箱</span></h2>
+      <h2>library <span style="font-size:0.85rem;font-weight:400;color:var(--text-secondary)">— packをまとめる道具箱</span></h2>
 
       <div class="lib-app" id="libApp">
         <!-- フィルタ -->
         <ul class="lib-filter" id="libFilter">
-          <li><button type="button" data-type="all" class="active">すべて</button></li>
-          <li><button type="button" data-type="pack">pack</button></li>
-          <li><button type="button" data-type="character">キャラ</button></li>
-          <li><button type="button" data-type="scene">シーン</button></li>
-          <li><button type="button" data-type="rag">RAG</button></li>
+          <li><button type="button" data-source="all" class="active">すべて</button></li>
+          <li><button type="button" data-source="own">自作</button></li>
+          <li><button type="button" data-source="added">導入した</button></li>
         </ul>
 
-        <!-- 作成ボタン (pack = 複数同梱の「作品」) -->
-        <a class="lib-create-btn" href="/create/pack/">＋ packを作る</a>
+        <!-- 作成ボタン (pack = 複数同梱の「作品」。ミニ作成フロート) -->
+        <button type="button" class="lib-create-btn" id="libCreateBtn">＋ packを作る</button>
 
         <!-- リストビュー -->
         <div class="lib-list" id="libList"></div>
@@ -517,6 +515,7 @@
     </div>
   </div>
 
-<script src="/assets/js/page-library.js?v=20261008"></script>
+<script src="/assets/js/pack-ui.js?v=20261009"></script>
+<script src="/assets/js/page-library.js?v=20261009"></script>
 </body>
 </html>

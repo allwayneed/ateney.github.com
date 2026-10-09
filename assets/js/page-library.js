@@ -1,6 +1,6 @@
 /* =========================================================
        library — 道具箱 (オーナーUIシート準拠, 2026-10-08)
-       リスト行 + ···メニュー (公開/名前変更/削除) + インライン詳細
+       pack専用化 (2026-10-09): Libraryはpackのみ。リスト行 + ···メニュー + インライン詳細
        データ: GET /api/library (統合インベントリ) + GET /api/me/pack (自packの dates/is_public)
     ========================================================= */
 
@@ -89,7 +89,7 @@
     /* --- リスト描画 --- */
     function visibleItems() {
       if (currentFilter === "all") return items;
-      return items.filter(function(it) { return it.item_type === currentFilter; });
+      return items.filter(function(it) { return it.source === currentFilter; }); // own/added
     }
 
     function createThumb(item) {
@@ -136,6 +136,18 @@
       setText(nm, item.name);
       nameLine.appendChild(nm);
       info.appendChild(nameLine);
+
+      // 同梱数 (キャラn·シーンn·RAGn)
+      var counts = document.createElement("div");
+      counts.className = "lib-row-dates";
+      var cparts = [];
+      if (item.n_characters) cparts.push("キャラ" + item.n_characters);
+      if (item.n_scenes) cparts.push("シーン" + item.n_scenes);
+      if (item.n_rags) cparts.push("RAG" + item.n_rags);
+      var cs = document.createElement("span");
+      setText(cs, cparts.length ? cparts.join(" · ") : "空のpack");
+      counts.appendChild(cs);
+      info.appendChild(counts);
 
       var dates = document.createElement("div");
       dates.className = "lib-row-dates";
@@ -186,7 +198,7 @@
       clearState();
       var vis = visibleItems();
       if (!vis.length) {
-        showState("🌙", "この種類はまだ空っぽ");
+        showState("🌙", "この区分はまだ空っぽ");
         return;
       }
       vis.forEach(function(it, i) {
@@ -228,7 +240,7 @@
         mk("名前の変更", "", function() { openRename(item); });
         mk("削除", "danger", function() { removeOwn(item); });
       } else {
-        mk("道具箱から削除", "danger", function() { removeAdded(item); });
+        mk("導入解除", "danger", function() { removeAdded(item); });
       }
 
       libOverlay.classList.add("active");
@@ -509,27 +521,7 @@
         return;
       }
 
-      // 部品: 自作なら me/:type/:id (フル)、追加分は公開詳細 (ragは無いので一覧データのみ)
-      if (item.source === "own") {
-        api("/api/me/" + item.item_type + "/" + item.item_id)
-          .then(function(res) {
-            if (res.status === 401) { location.href = "/login/"; return null; }
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            return res.json();
-          })
-          .then(function(data) { if (data) finish(data); })
-          .catch(function() { libDetailBody.innerHTML = ""; libDetailBody.appendChild(textNode("読み込めませんでした")); });
-      } else if (item.item_type === "rag") {
-        finish(null); // 追加RAGはこれ以上の情報を持たない (SoC: 他人のrag全文は取れない)
-      } else {
-        api("/api/" + item.item_type + "/" + item.item_id)
-          .then(function(res) {
-            if (!res.ok) return null; // 非公開化された等
-            return res.json();
-          })
-          .then(function(data) { finish(data || null); })
-          .catch(function() { finish(null); });
-      }
+      // pack専用化 (2026-10-09): 部品単体の分岐は廃止
     }
 
     function renderDetailBody(item, data) {
@@ -567,38 +559,14 @@
         return;
       }
 
-      // character / scene
-      if (item.item_type === "character" || item.item_type === "scene") {
-        var desc = (full && full.description) || item.description;
-        if (desc) libDetailBody.appendChild(section("説明", textNode(desc)));
-        if (item.item_type === "character") {
-          if (full && full.personality) libDetailBody.appendChild(section("性格", textNode(full.personality)));
-          if (full && full.greeting) libDetailBody.appendChild(section("挨拶", textNode("「" + full.greeting + "」")));
-        }
-        if (item.item_type === "scene" && full && full.setting) {
-          libDetailBody.appendChild(section("場面設定", textNode(full.setting)));
-        }
-        var tags = (full && (full.tags || full.genre)) || item.tags;
-        if (tags) libDetailBody.appendChild(section("タグ", textNode(tags)));
-        return;
-      }
-
-      // rag
-      var content = full ? full.content : item.description;
-      if (content) {
-        // 長文は2000字で打ち切り (全文は create編集ページで)
-        var shown = String(content);
-        if (shown.length > 2000) shown = shown.slice(0, 2000) + "...";
-        libDetailBody.appendChild(section("内容", textNode(shown)));
-      }
-      if (item.tags) libDetailBody.appendChild(section("タグ", textNode(item.tags)));
+      // pack専用化 (2026-10-09): 部品単体の詳細描画は廃止
     }
 
     /* --- フィルタ --- */
     libFilter.addEventListener("click", function(e) {
-      var btn = e.target.closest("button[data-type]");
+      var btn = e.target.closest("button[data-source]");
       if (!btn) return;
-      currentFilter = btn.getAttribute("data-type");
+      currentFilter = btn.getAttribute("data-source");
       libFilter.querySelectorAll("button").forEach(function(b) {
         b.classList.toggle("active", b === btn);
       });
@@ -645,6 +613,17 @@
             libList.innerHTML = "";
             showState("⚠️", "道具箱を読み込めませんでした");
           });
+      });
+    }
+
+    /* --- packミニ作成フロート (pack-ui.js) --- */
+    var libCreateBtn = document.getElementById("libCreateBtn");
+    if (libCreateBtn) {
+      libCreateBtn.addEventListener("click", function() {
+        if (!window.AteneyAuth || !AteneyAuth.isLoggedIn()) { location.href = "/login/"; return; }
+        if (window.AteneyPackUI) {
+          AteneyPackUI.openCreatePack(function() { loadAll(); });
+        }
       });
     }
 

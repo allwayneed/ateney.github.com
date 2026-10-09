@@ -74,15 +74,13 @@
     // --- 道具箱 (Library本実装 2026-10-08): /api/library/:type/:id ---
     // own部品は常に在庫なのでボタン自体を隠す。added/not-yet でトグル。
     var libBusy = false;
-    var LIB_LABELS = {
-      character: { add: "道具箱に追加", remove: "道具箱から削除" },
-      scene: { add: "道具箱に追加", remove: "道具箱から削除" },
-      pack: { add: "道具箱に入れる", remove: "道具箱から出す" }
-    };
-    function setupLibraryButton(itemId, itemType) {
+    // pack専用化 (2026-10-09): char/scene単体の追加/削除は廃止。
+    // 部品は AteneyPackUI (pack-ui.js) のフロートからpackへ同梱する。
+    var PACK_LABELS = { add: "道具箱に入れる", remove: "道具箱から出す" };
+    function setupLibraryButton(itemId, itemType) { // packのみ (道具箱への導入トグル)
       var btn = document.getElementById("chat-btn");
       if (!btn) return;
-      if (!LIB_LABELS[itemType]) return; // ragは対象外
+      if (itemType !== "pack") return;
       var icon = btn.querySelector("svg") ? btn.querySelector("svg").outerHTML : "";
       var inLibrary = false;
 
@@ -114,11 +112,11 @@
               if (res.status === 401) { location.href = "/login/"; return null; }
               if (!res.ok) throw new Error("HTTP " + res.status);
               inLibrary = !inLibrary;
-              setBtn(inLibrary ? LIB_LABELS[itemType].remove : LIB_LABELS[itemType].add);
+              setBtn(inLibrary ? PACK_LABELS.remove : PACK_LABELS.add);
             })
             .catch(function(err) {
               console.error(err);
-              setBtn(inLibrary ? LIB_LABELS[itemType].remove : LIB_LABELS[itemType].add);
+              setBtn(inLibrary ? PACK_LABELS.remove : PACK_LABELS.add);
             })
             .then(function() { btn.disabled = false; libBusy = false; });
         });
@@ -150,6 +148,25 @@
       });
     }
 
+
+    // --- packに追加 (pack専用化 2026-10-09): 部品詳細からpackへ同梱するフロート ---
+    function setupPackAddButton(itemId, itemType, itemName) {
+      var btn = document.getElementById("chat-btn");
+      if (!btn) return;
+      if (itemType !== "character" && itemType !== "scene" && itemType !== "rag") return;
+      var authReady2 = (window.AteneyAuth && AteneyAuth.ready)
+        ? Promise.resolve(AteneyAuth.ready).catch(function() {})
+        : Promise.resolve();
+      btn.addEventListener("click", function() {
+        authReady2.then(function() {
+          if (!window.AteneyAuth || !AteneyAuth.isLoggedIn()) {
+            location.href = "/login/";
+            return;
+          }
+          if (window.AteneyPackUI) AteneyPackUI.openAddToPack(itemType, itemId, itemName);
+        });
+      });
+    }
 
     // アバターURLはhttp(s)のみ許可
     function safeAvatarUrl(u) {
@@ -233,14 +250,14 @@
         html += '<div class="char-section"><h2>挨拶</h2><p id="char-greeting" style="font-style:italic"></p></div>';
       }
 
-      html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>道具箱に追加</button></div>';
+      html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>packに追加</button></div>';
 
       html += '</div>';
 
       content.innerHTML = html;
 
       // 道具箱ボタン (Library本実装)
-      setupLibraryButton(c.id, "character");
+      setupPackAddButton(c.id, "character", c.name);
 
       // 画像読み込み失敗時のフォールバック（textContentで安全に）
       var img = content.querySelector(".char-avatar-img");
@@ -297,7 +314,7 @@
       }
       if (c.setting) {
         html += '<div class="char-section"><h2>場面設定</h2><p id="char-setting"></p></div>';
-        html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>道具箱に追加</button></div>';
+        html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>packに追加</button></div>';
       }
 
 
@@ -310,7 +327,7 @@
       setText(document.getElementById("char-desc"), c.description);
       setText(document.getElementById("char-setting"), c.setting);
       // 道具箱ボタン (Library本実装)
-      setupLibraryButton(c.id, "scene");
+      setupPackAddButton(c.id, "scene", c.name);
     }
 
     function renderRAG(c) {
@@ -333,6 +350,8 @@
       if (c.description) {
         html += '<div class="char-section"><h2>説明</h2><p id="char-desc"></p></div>';
       }
+      // packに追加 (pack専用化 2026-10-09): ragは自作のみ同梱可
+      html += '<div class="char-section"><button class="char-chat-btn" id="chat-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>packに追加</button></div>';
       html += '</div>';
       content.innerHTML = html;
 
@@ -351,6 +370,7 @@
 
       setText(document.getElementById("char-name"), c.name || c.title);
       setText(document.getElementById("char-desc"), c.description);
+      setupPackAddButton(c.id, "rag", c.name || c.title);
     }
 
     async function loadrag(uuid) {
